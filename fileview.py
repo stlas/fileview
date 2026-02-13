@@ -15,7 +15,6 @@ import shutil
 import sys
 
 app = Flask(__name__)
-CORS(app)
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -35,13 +34,9 @@ def load_config():
 
 def is_path_allowed(filepath):
     """Check if the path is within allowed directories"""
-    abs_path = os.path.abspath(filepath)
-    if not abs_path.endswith('/'):
-        abs_path_check = abs_path + '/'
-    else:
-        abs_path_check = abs_path
+    abs_path = os.path.realpath(filepath)
     return any(
-        abs_path_check.startswith(base) or abs_path == base.rstrip('/')
+        abs_path == base.rstrip('/') or abs_path.startswith(base.rstrip('/') + '/')
         for base in CONFIG.get('allowed_paths', [])
     )
 
@@ -169,6 +164,14 @@ def view_file():
                 'tables', 'fenced_code', 'codehilite', 'toc', 'meta', 'nl2br'
             ])
             html = md.convert(content)
+            # Sanitize HTML to prevent XSS (strip script/iframe/etc.)
+            import re as _re
+            html = _re.sub(r'<script[^>]*>.*?</script>', '', html, flags=_re.DOTALL | _re.IGNORECASE)
+            html = _re.sub(r'<iframe[^>]*>.*?</iframe>', '', html, flags=_re.DOTALL | _re.IGNORECASE)
+            html = _re.sub(r'<object[^>]*>.*?</object>', '', html, flags=_re.DOTALL | _re.IGNORECASE)
+            html = _re.sub(r'<embed[^>]*/?>', '', html, flags=_re.IGNORECASE)
+            html = _re.sub(r'\bon\w+\s*=\s*["\'][^"\']*["\']', '', html, flags=_re.IGNORECASE)
+            html = _re.sub(r'<a\s([^>]*)href\s*=\s*["\']javascript:[^"\']*["\']', '<a \\1href="#"', html, flags=_re.IGNORECASE)
             html = convert_internal_links(html, filepath)
             meta = getattr(md, 'Meta', {})
             toc = getattr(md, 'toc', '')
@@ -311,12 +314,22 @@ def check_path():
     path = request.args.get('path', '')
     path = convert_path(path)
 
+    allowed = is_path_allowed(path)
+    if not allowed:
+        return jsonify({
+            'converted': path,
+            'exists': False,
+            'is_file': False,
+            'is_dir': False,
+            'allowed': False,
+        })
+
     return jsonify({
         'converted': path,
         'exists': os.path.exists(path),
         'is_file': os.path.isfile(path),
         'is_dir': os.path.isdir(path),
-        'allowed': is_path_allowed(path),
+        'allowed': True,
     })
 
 # ── API: Image Preview ───────────────────────────────────────────────────────
@@ -580,8 +593,11 @@ def file_new_folder():
 
 if __name__ == '__main__':
     load_config()
+    cors_origins = CONFIG.get('cors_origins', ['http://192.168.178.*'])
+    CORS(app, origins=cors_origins)
     host = CONFIG.get('host', '0.0.0.0')
     port = CONFIG.get('port', 8080)
     print(f"FileView starting on http://{host}:{port}")
     print(f"Allowed paths: {CONFIG.get('allowed_paths', [])}")
+    print(f"CORS origins: {cors_origins}")
     app.run(host=host, port=port, debug=False)

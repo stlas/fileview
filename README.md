@@ -68,6 +68,7 @@ All settings live in `config.json`:
 | `features.file_operations` | `false` | Enable copy/move/rename/delete |
 | `features.favorites` | `true` | Enable favorites (stored in browser localStorage) |
 | `features.path_conversion` | `null` | Optional path mapping (see below) |
+| `cors_origins` | `["http://192.168.178.*"]` | Allowed CORS origins (list of patterns) |
 
 ### Path Conversion
 
@@ -143,6 +144,10 @@ pip install flask flask-cors markdown pygments
 FileView enforces a path whitelist (`allowed_paths`). Every file and directory request is validated:
 
 - Files outside `allowed_paths` return HTTP 403
+- Symlinks are resolved (`realpath`) before path checks -- no symlink escape
+- `/api/check-path` does not leak file existence outside allowed paths
+- Markdown HTML is sanitized (script, iframe, object, embed, event handlers stripped)
+- CORS origins are configurable (`cors_origins` in config.json, defaults to LAN)
 - File operations validate both source and destination
 - Directory traversal (`../`) is normalized and checked
 - File operations are disabled by default
