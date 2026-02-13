@@ -488,9 +488,10 @@
                 <div class="sidebar-stats" id="sidebarStats"></div>
             </div>
 
-            <!-- Favorites -->
-            <div class="favorites-section" id="favoritesSection" style="display: none;">
+            <!-- Favorite Paths (from config + localStorage) -->
+            <div class="favorites-section" id="favoritesSection">
                 <div class="favorites-header">⭐ Favorites</div>
+                <div id="configFavsList"></div>
                 <div id="favoritesList"></div>
             </div>
 
@@ -500,6 +501,7 @@
                 <button class="sort-btn active" data-sort="name" onclick="setSort('name')">Name</button>
                 <button class="sort-btn" data-sort="date" onclick="setSort('date')">Date</button>
                 <button class="sort-btn" data-sort="size" onclick="setSort('size')">Size</button>
+                <button class="sort-btn" id="newBtn" onclick="promptNew()" title="New file or folder" style="display:none;">+New</button>
             </div>
 
             <div class="file-list" id="fileList">
@@ -526,6 +528,9 @@
             </div>
             <div class="filter-bar">
                 <input type="text" class="filter-input" id="filterInputRight" placeholder="Filter..." oninput="applyFilterSortRight()">
+                <button class="sort-btn active" data-sort-r="name" onclick="setSortRight('name')">Name</button>
+                <button class="sort-btn" data-sort-r="date" onclick="setSortRight('date')">Date</button>
+                <button class="sort-btn" data-sort-r="size" onclick="setSortRight('size')">Size</button>
             </div>
             <div class="file-list" id="fileListRight"></div>
         </aside>
@@ -552,6 +557,8 @@
         let currentItemsRight = []; // Raw items from API (right panel)
         let currentSort = 'name';
         let currentSortDir = 1;     // 1 = asc, -1 = desc
+        let currentSortRight = 'name';
+        let currentSortDirRight = 1;
         let favorites = [];
 
         const API_BASE = window.location.origin + '/api';
@@ -570,7 +577,15 @@
             document.getElementById('welcomeTitle').textContent = APP_CONFIG.title || 'FileView';
             document.title = APP_CONFIG.title || 'FileView';
 
-            // Load favorites
+            // Show New button if file_operations enabled
+            if (APP_CONFIG.features?.file_operations) {
+                document.getElementById('newBtn').style.display = '';
+            }
+
+            // Render config favorite paths
+            renderConfigFavs();
+
+            // Load user favorites from localStorage
             loadFavorites();
 
             // URL params
@@ -613,16 +628,37 @@
             renderFavorites();
         }
 
+        function renderConfigFavs() {
+            const list = document.getElementById('configFavsList');
+            const paths = APP_CONFIG.favorite_paths || [];
+            if (paths.length === 0) { list.innerHTML = ''; return; }
+
+            list.innerHTML = paths.map(fav =>
+                `<div class="fav-item" onclick="browseDirectory('${escapeAttr(fav.path)}')">
+                    <span>${fav.icon || '📁'}</span>
+                    <span class="fav-name" title="${escapeAttr(fav.path)}">${escapeHtml(fav.name)}</span>
+                </div>`
+            ).join('');
+        }
+
         function renderFavorites() {
             const section = document.getElementById('favoritesSection');
             const list = document.getElementById('favoritesList');
+            const hasConfigFavs = (APP_CONFIG.favorite_paths || []).length > 0;
 
-            if (favorites.length === 0) {
+            if (favorites.length === 0 && !hasConfigFavs) {
                 section.style.display = 'none';
+                list.innerHTML = '';
                 return;
             }
 
             section.style.display = 'block';
+
+            if (favorites.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+
             list.innerHTML = favorites.map((fav, i) => {
                 const isDir = fav.endsWith('/');
                 const name = fav.split('/').filter(Boolean).pop() || fav;
@@ -687,7 +723,19 @@
 
         function applyFilterSortRight() {
             const filter = document.getElementById('filterInputRight').value.toLowerCase();
-            renderFileList(currentItemsRight, 'fileListRight', filter, 'name', 1, true);
+            renderFileList(currentItemsRight, 'fileListRight', filter, currentSortRight, currentSortDirRight, true);
+        }
+
+        function setSortRight(field) {
+            if (currentSortRight === field) {
+                currentSortDirRight *= -1;
+            } else {
+                currentSortRight = field;
+                currentSortDirRight = 1;
+            }
+            document.querySelectorAll('[data-sort-r]').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-sort-r="${field}"]`).classList.add('active');
+            applyFilterSortRight();
         }
 
         function renderFileList(items, containerId, filter, sortField, sortDir, isRight) {
@@ -903,6 +951,52 @@
 
             if (mc.classList.contains('dual-panel') && !currentDirRight) {
                 browseDirRight(currentDir);
+            }
+        }
+
+        // ── New File / Folder ───────────────────────────────────────
+        function promptNew() {
+            showModal('New', `
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button class="btn" id="newTypeFile" onclick="selectNewType('file')" style="flex:1; justify-content: center;">📄 File</button>
+                    <button class="btn" id="newTypeFolder" onclick="selectNewType('folder')" style="flex:1; justify-content: center;">📁 Folder</button>
+                </div>
+                <input type="text" id="modalInput" placeholder="Name...">
+                <div class="modal-actions">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn primary" onclick="doNew()">Create</button>
+                </div>
+            `);
+            window._newType = 'file';
+            document.getElementById('newTypeFile').classList.add('active');
+            setTimeout(() => document.getElementById('modalInput').focus(), 50);
+        }
+
+        function selectNewType(type) {
+            window._newType = type;
+            document.getElementById('newTypeFile').classList.toggle('active', type === 'file');
+            document.getElementById('newTypeFolder').classList.toggle('active', type === 'folder');
+        }
+
+        async function doNew() {
+            const name = document.getElementById('modalInput').value.trim();
+            if (!name) return;
+
+            const endpoint = window._newType === 'folder' ? '/files/new-folder' : '/files/new-file';
+            try {
+                const resp = await fetch(API_BASE + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ directory: currentDir, name }),
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                closeModal();
+                toast(`Created ${name}`, 'success');
+                browseDirectory(currentDir);
+                if (window._newType === 'file' && data.path) loadFile(data.path);
+            } catch (e) {
+                toast(e.message, 'error');
             }
         }
 

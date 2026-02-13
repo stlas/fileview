@@ -4,6 +4,10 @@
     "title": "FileView",
     "allowed_paths": ["/srv/files"],
     "default_directory": "/srv/files",
+    "favorite_paths": [
+        {"name": "Documents", "path": "/srv/files/docs/", "icon": "📚"},
+        {"name": "Projects", "path": "/srv/files/projects/", "icon": "🚀"}
+    ],
     "features": {
         "file_operations": false,
         "favorites": true,

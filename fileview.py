@@ -134,6 +134,7 @@ def get_config():
         'default_directory': CONFIG.get('default_directory', '/'),
         'allowed_paths': CONFIG.get('allowed_paths', []),
         'features': CONFIG.get('features', {}),
+        'favorite_paths': CONFIG.get('favorite_paths', []),
     })
 
 # ── API: View File ───────────────────────────────────────────────────────────
@@ -424,6 +425,65 @@ def file_delete():
     try:
         os.remove(path)
         return jsonify({'success': True, 'deleted': path})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/new-file', methods=['POST'])
+def file_new_file():
+    """Create a new empty file"""
+    if not CONFIG.get('features', {}).get('file_operations'):
+        return jsonify({'error': 'File operations are disabled'}), 403
+
+    data = request.get_json()
+    directory = data.get('directory', '')
+    name = data.get('name', '')
+
+    if not directory or not name:
+        return jsonify({'error': 'directory and name required'}), 400
+    if '/' in name or '\\' in name:
+        return jsonify({'error': 'name must not contain path separators'}), 400
+    if not is_path_allowed(directory):
+        return jsonify({'error': 'Path not allowed'}), 403
+
+    filepath = os.path.join(directory, name)
+    if not is_path_allowed(filepath):
+        return jsonify({'error': 'Path not allowed'}), 403
+    if os.path.exists(filepath):
+        return jsonify({'error': 'File already exists'}), 409
+
+    try:
+        with open(filepath, 'w') as f:
+            f.write('')
+        return jsonify({'success': True, 'path': filepath})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/files/new-folder', methods=['POST'])
+def file_new_folder():
+    """Create a new directory"""
+    if not CONFIG.get('features', {}).get('file_operations'):
+        return jsonify({'error': 'File operations are disabled'}), 403
+
+    data = request.get_json()
+    directory = data.get('directory', '')
+    name = data.get('name', '')
+
+    if not directory or not name:
+        return jsonify({'error': 'directory and name required'}), 400
+    if '/' in name or '\\' in name:
+        return jsonify({'error': 'name must not contain path separators'}), 400
+    if not is_path_allowed(directory):
+        return jsonify({'error': 'Path not allowed'}), 403
+
+    folderpath = os.path.join(directory, name)
+    if not is_path_allowed(folderpath):
+        return jsonify({'error': 'Path not allowed'}), 403
+    if os.path.exists(folderpath):
+        return jsonify({'error': 'Already exists'}), 409
+
+    try:
+        os.makedirs(folderpath)
+        return jsonify({'success': True, 'path': folderpath})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
