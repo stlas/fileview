@@ -1,0 +1,12 @@
+{
+    "host": "0.0.0.0",
+    "port": 8080,
+    "title": "FileView",
+    "allowed_paths": ["/srv/files"],
+    "default_directory": "/srv/files",
+    "features": {
+        "file_operations": false,
+        "favorites": true,
+        "path_conversion": null
+    }
+}

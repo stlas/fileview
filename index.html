@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FileView</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-code: #1a1f26;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-bright: #f0f6fc;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --accent-yellow: #e3b341;
+            --border-color: rgba(240, 246, 252, 0.1);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.7;
+        }
+
+        /* ── Header ─────────────────────────────────────────────── */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-bright);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .logo:hover { color: var(--accent-blue); }
+
+        .path-input-container {
+            flex: 1;
+            min-width: 200px;
+            max-width: 600px;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .path-input {
+            flex: 1;
+            padding: 0.4rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .path-input:focus { outline: none; border-color: var(--accent-blue); }
+
+        .header-actions { display: flex; gap: 0.4rem; }
+
+        .btn {
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .btn.primary {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .btn.primary:hover { background: #4090e0; }
+
+        .btn.active {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .btn.fav-btn { color: var(--text-secondary); border: none; background: none; font-size: 1.1rem; padding: 0.2rem; }
+        .btn.fav-btn.is-fav { color: var(--accent-yellow); }
+        .btn.fav-btn:hover { color: var(--accent-yellow); }
+
+        /* ── Main Layout ────────────────────────────────────────── */
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 0;
+            height: calc(100vh - 52px);
+        }
+
+        .main-container.dual-panel {
+            grid-template-columns: 300px 1fr 300px;
+        }
+
+        @media (max-width: 900px) {
+            .main-container { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .main-container.show-sidebar .sidebar { display: flex; }
+        }
+
+        /* ── Sidebar ────────────────────────────────────────────── */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+
+        .sidebar-header h3 {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-bright);
+            margin-bottom: 0.25rem;
+        }
+
+        .current-path {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .sidebar-stats {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.25rem;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* ── Favorites Section ──────────────────────────────────── */
+        .favorites-section {
+            border-bottom: 1px solid var(--border-color);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .favorites-header {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-yellow);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--bg-tertiary);
+        }
+
+        .fav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.75rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            color: var(--accent-yellow);
+        }
+
+        .fav-item:hover { background: var(--bg-tertiary); }
+
+        .fav-item .fav-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-primary);
+        }
+
+        .fav-item .fav-remove {
+            opacity: 0;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+
+        .fav-item:hover .fav-remove { opacity: 1; }
+        .fav-item .fav-remove:hover { color: var(--accent-red); }
+
+        /* ── Filter/Sort Bar ────────────────────────────────────── */
+        .filter-bar {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+
+        .filter-input {
+            flex: 1;
+            padding: 0.3rem 0.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            font-family: inherit;
+        }
+
+        .filter-input:focus { outline: none; border-color: var(--accent-blue); }
+
+        .sort-btn {
+            padding: 0.2rem 0.4rem;
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .sort-btn:hover { color: var(--text-primary); border-color: var(--border-color); }
+        .sort-btn.active { color: var(--accent-blue); border-color: var(--accent-blue); }
+
+        /* ── File List ──────────────────────────────────────────── */
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.25rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.8rem;
+        }
+
+        .file-item:hover { background: var(--bg-tertiary); }
+        .file-item.directory { color: var(--accent-blue); }
+        .file-item.viewable { color: var(--accent-green); }
+        .file-item.not-viewable { color: var(--text-secondary); cursor: default; }
+
+        .file-item .icon { font-size: 0.9rem; width: 1.25rem; text-align: center; }
+        .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .size { font-size: 0.7rem; color: var(--text-secondary); }
+        .file-item .mtime { font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; }
+
+        /* ── Content Area ───────────────────────────────────────── */
+        .content {
+            overflow: auto;
+            padding: 2rem;
+        }
+
+        /* ── Markdown Styles ────────────────────────────────────── */
+        .markdown-body { color: var(--text-primary); max-width: 900px; }
+        .markdown-body h1 { font-size: 2rem; font-weight: 700; color: var(--text-bright); margin: 0 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); }
+        .markdown-body h2 { font-size: 1.5rem; font-weight: 600; color: var(--text-bright); margin: 2rem 0 1rem 0; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border-color); }
+        .markdown-body h3 { font-size: 1.25rem; font-weight: 600; color: var(--text-bright); margin: 1.5rem 0 0.75rem 0; }
+        .markdown-body h4, .markdown-body h5, .markdown-body h6 { font-weight: 600; color: var(--text-bright); margin: 1.25rem 0 0.5rem 0; }
+        .markdown-body p { margin: 0 0 1rem 0; }
+        .markdown-body a { color: var(--accent-blue); text-decoration: none; }
+        .markdown-body a:hover { text-decoration: underline; }
+        .markdown-body ul, .markdown-body ol { margin: 0 0 1rem 0; padding-left: 2rem; }
+        .markdown-body li { margin: 0.25rem 0; }
+        .markdown-body code { font-family: 'JetBrains Mono', monospace; background: var(--bg-code); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em; color: var(--accent-orange); }
+        .markdown-body pre { background: var(--bg-code); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 0 0 1rem 0; }
+        .markdown-body pre code { background: none; padding: 0; color: var(--text-primary); font-size: 0.875rem; }
+        .markdown-body blockquote { border-left: 4px solid var(--accent-blue); padding: 0.5rem 1rem; margin: 0 0 1rem 0; background: rgba(88, 166, 255, 0.1); border-radius: 0 8px 8px 0; color: var(--text-secondary); }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 0 0 1rem 0; }
+        .markdown-body th, .markdown-body td { padding: 0.75rem 1rem; border: 1px solid var(--border-color); text-align: left; }
+        .markdown-body th { background: var(--bg-tertiary); font-weight: 600; color: var(--text-bright); }
+        .markdown-body tr:hover { background: rgba(88, 166, 255, 0.05); }
+        .markdown-body hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }
+        .markdown-body img { max-width: 100%; border-radius: 8px; }
+        .markdown-body strong { color: var(--text-bright); font-weight: 600; }
+
+        /* ── Status States ──────────────────────────────────────── */
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem; color: var(--text-secondary); }
+        .spinner { width: 40px; height: 40px; border: 3px solid var(--bg-tertiary); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error-box { background: rgba(248, 81, 73, 0.1); border: 1px solid var(--accent-red); border-radius: 8px; padding: 1.5rem; color: var(--accent-red); }
+        .error-box h3 { margin-bottom: 0.5rem; }
+
+        /* ── Welcome ────────────────────────────────────────────── */
+        .welcome { text-align: center; padding: 3rem; }
+        .welcome h2 { font-size: 1.75rem; color: var(--text-bright); margin-bottom: 0.5rem; }
+        .welcome p { color: var(--text-secondary); margin-bottom: 2rem; }
+
+        /* ── File Meta ──────────────────────────────────────────── */
+        .file-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+        }
+
+        .file-meta span { display: flex; align-items: center; gap: 0.25rem; }
+
+        /* ── Toast Notifications ────────────────────────────────── */
+        .toast-container {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        .toast.success { background: rgba(63, 185, 80, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green); }
+        .toast.error { background: rgba(248, 81, 73, 0.15); border: 1px solid var(--accent-red); color: var(--accent-red); }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+
+        /* ── Context Menu ───────────────────────────────────────── */
+        .context-menu {
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.25rem;
+            z-index: 200;
+            min-width: 160px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+        }
+
+        .context-menu.visible { display: block; }
+
+        .context-menu-item {
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .context-menu-item:hover { background: var(--bg-tertiary); }
+        .context-menu-item.danger { color: var(--accent-red); }
+        .context-menu-item.danger:hover { background: rgba(248, 81, 73, 0.1); }
+        .context-menu-sep { height: 1px; background: var(--border-color); margin: 0.25rem 0; }
+
+        /* ── Modal ──────────────────────────────────────────────── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+
+        .modal-overlay.visible { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            min-width: 350px;
+            max-width: 500px;
+        }
+
+        .modal h3 { color: var(--text-bright); margin-bottom: 1rem; }
+
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal input[type="text"]:focus { outline: none; border-color: var(--accent-blue); }
+
+        .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+        /* ── Second Panel ───────────────────────────────────────── */
+        .panel-right {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-container.dual-panel .panel-right { display: flex; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="?" class="logo" id="logoLink">
+                <span>📂</span>
+                <span id="appTitle">FileView</span>
+            </a>
+            <div class="path-input-container">
+                <input type="text" class="path-input" id="pathInput"
+                       placeholder="Enter file or directory path..."
+                       onkeypress="if(event.key==='Enter') goToPath()">
+                <button class="btn fav-btn" id="favToggle" onclick="toggleFavorite()" title="Toggle favorite">☆</button>
+                <button class="btn primary" onclick="goToPath()">Open</button>
+            </div>
+            <div class="header-actions">
+                <a class="btn" id="rawBtn" href="#" target="_blank" style="display: none;">Raw</a>
+                <button class="btn" id="dualPanelBtn" onclick="toggleDualPanel()">⧉ Dual</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container" id="mainContainer">
+        <!-- Left Sidebar: File Browser -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>📁 Browser</h3>
+                <div class="current-path" id="currentPath"></div>
+                <div class="sidebar-stats" id="sidebarStats"></div>
+            </div>
+
+            <!-- Favorites -->
+            <div class="favorites-section" id="favoritesSection" style="display: none;">
+                <div class="favorites-header">⭐ Favorites</div>
+                <div id="favoritesList"></div>
+            </div>
+
+            <!-- Filter & Sort -->
+            <div class="filter-bar">
+                <input type="text" class="filter-input" id="filterInput" placeholder="Filter..." oninput="applyFilterSort()">
+                <button class="sort-btn active" data-sort="name" onclick="setSort('name')">Name</button>
+                <button class="sort-btn" data-sort="date" onclick="setSort('date')">Date</button>
+                <button class="sort-btn" data-sort="size" onclick="setSort('size')">Size</button>
+            </div>
+
+            <div class="file-list" id="fileList">
+                <div class="loading"><div class="spinner"></div><span>Loading...</span></div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="content" id="contentArea">
+            <div id="content">
+                <div class="welcome" id="welcomeScreen">
+                    <h2>📂 <span id="welcomeTitle">FileView</span></h2>
+                    <p>Enter a path above or browse the file tree on the left.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel (dual mode) -->
+        <aside class="sidebar panel-right" id="panelRight">
+            <div class="sidebar-header">
+                <h3>📁 Target</h3>
+                <div class="current-path" id="currentPathRight"></div>
+                <div class="sidebar-stats" id="sidebarStatsRight"></div>
+            </div>
+            <div class="filter-bar">
+                <input type="text" class="filter-input" id="filterInputRight" placeholder="Filter..." oninput="applyFilterSortRight()">
+            </div>
+            <div class="file-list" id="fileListRight"></div>
+        </aside>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu"></div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+        <div class="modal" id="modal"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ── State ──────────────────────────────────────────────────
+        let APP_CONFIG = {};
+        let currentFile = null;
+        let currentDir = '/';
+        let currentDirRight = null;
+        let currentItems = [];      // Raw items from API (left panel)
+        let currentItemsRight = []; // Raw items from API (right panel)
+        let currentSort = 'name';
+        let currentSortDir = 1;     // 1 = asc, -1 = desc
+        let favorites = [];
+
+        const API_BASE = window.location.origin + '/api';
+
+        // ── Init ───────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load config
+            try {
+                const resp = await fetch(API_BASE + '/config');
+                APP_CONFIG = await resp.json();
+            } catch (e) {
+                APP_CONFIG = { title: 'FileView', default_directory: '/', features: {} };
+            }
+
+            document.getElementById('appTitle').textContent = APP_CONFIG.title || 'FileView';
+            document.getElementById('welcomeTitle').textContent = APP_CONFIG.title || 'FileView';
+            document.title = APP_CONFIG.title || 'FileView';
+
+            // Load favorites
+            loadFavorites();
+
+            // URL params
+            const params = new URLSearchParams(window.location.search);
+            const fileParam = params.get('file');
+            const dirParam = params.get('dir');
+
+            currentDir = dirParam || APP_CONFIG.default_directory || '/';
+            browseDirectory(currentDir);
+
+            if (fileParam) {
+                loadFile(fileParam);
+            }
+        });
+
+        // Browser back/forward
+        window.addEventListener('popstate', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('file')) loadFile(params.get('file'));
+            else if (params.get('dir')) browseDirectory(params.get('dir'));
+        });
+
+        // Close context menu on click
+        document.addEventListener('click', () => {
+            document.getElementById('contextMenu').classList.remove('visible');
+        });
+
+        // ── Favorites ──────────────────────────────────────────────
+        function loadFavorites() {
+            try {
+                favorites = JSON.parse(localStorage.getItem('fileview-favorites') || '[]');
+            } catch (e) {
+                favorites = [];
+            }
+            renderFavorites();
+        }
+
+        function saveFavorites() {
+            localStorage.setItem('fileview-favorites', JSON.stringify(favorites));
+            renderFavorites();
+        }
+
+        function renderFavorites() {
+            const section = document.getElementById('favoritesSection');
+            const list = document.getElementById('favoritesList');
+
+            if (favorites.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            list.innerHTML = favorites.map((fav, i) => {
+                const isDir = fav.endsWith('/');
+                const name = fav.split('/').filter(Boolean).pop() || fav;
+                return `<div class="fav-item" onclick="openFavorite('${escapeHtml(fav)}')">
+                    <span>${isDir ? '📁' : '📄'}</span>
+                    <span class="fav-name" title="${escapeHtml(fav)}">${escapeHtml(name)}</span>
+                    <span class="fav-remove" onclick="event.stopPropagation(); removeFavorite(${i})" title="Remove">✕</span>
+                </div>`;
+            }).join('');
+        }
+
+        function toggleFavorite() {
+            const path = document.getElementById('pathInput').value.trim();
+            if (!path) return;
+
+            const idx = favorites.indexOf(path);
+            if (idx >= 0) {
+                favorites.splice(idx, 1);
+            } else {
+                favorites.push(path);
+            }
+            saveFavorites();
+            updateFavButton();
+        }
+
+        function removeFavorite(index) {
+            favorites.splice(index, 1);
+            saveFavorites();
+            updateFavButton();
+        }
+
+        function openFavorite(path) {
+            document.getElementById('pathInput').value = path;
+            goToPath();
+        }
+
+        function updateFavButton() {
+            const path = document.getElementById('pathInput').value.trim();
+            const btn = document.getElementById('favToggle');
+            const isFav = favorites.includes(path);
+            btn.textContent = isFav ? '★' : '☆';
+            btn.classList.toggle('is-fav', isFav);
+        }
+
+        // ── Filter & Sort ──────────────────────────────────────────
+        function setSort(field) {
+            if (currentSort === field) {
+                currentSortDir *= -1;
+            } else {
+                currentSort = field;
+                currentSortDir = 1;
+            }
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.sort-btn[data-sort="${field}"]`).classList.add('active');
+            applyFilterSort();
+        }
+
+        function applyFilterSort() {
+            const filter = document.getElementById('filterInput').value.toLowerCase();
+            renderFileList(currentItems, 'fileList', filter, currentSort, currentSortDir);
+        }
+
+        function applyFilterSortRight() {
+            const filter = document.getElementById('filterInputRight').value.toLowerCase();
+            renderFileList(currentItemsRight, 'fileListRight', filter, 'name', 1, true);
+        }
+
+        function renderFileList(items, containerId, filter, sortField, sortDir, isRight) {
+            const container = document.getElementById(containerId);
+
+            // Separate parents, dirs, files
+            const parents = items.filter(i => i.type === 'parent');
+            let dirs = items.filter(i => i.type === 'directory');
+            let files = items.filter(i => i.type === 'file');
+
+            // Filter
+            if (filter) {
+                dirs = dirs.filter(i => i.name.toLowerCase().includes(filter));
+                files = files.filter(i => i.name.toLowerCase().includes(filter));
+            }
+
+            // Sort
+            const sortFn = (a, b) => {
+                let cmp = 0;
+                if (sortField === 'name') cmp = a.name.localeCompare(b.name);
+                else if (sortField === 'date') cmp = (a.mtime || 0) - (b.mtime || 0);
+                else if (sortField === 'size') cmp = (a.size || 0) - (b.size || 0);
+                return cmp * sortDir;
+            };
+
+            dirs.sort(sortFn);
+            files.sort(sortFn);
+
+            const sorted = [...parents, ...dirs, ...files];
+
+            if (sorted.length === 0) {
+                container.innerHTML = '<div style="padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">No items</div>';
+                return;
+            }
+
+            container.innerHTML = sorted.map(item => {
+                const mtimeStr = item.mtime ? new Date(item.mtime * 1000).toLocaleDateString() : '';
+
+                if (item.type === 'parent') {
+                    const onclick = isRight
+                        ? `browseDirRight('${escapeAttr(item.path)}')`
+                        : `browseDirectory('${escapeAttr(item.path)}')`;
+                    return `<div class="file-item directory" onclick="${onclick}">
+                        <span class="icon">${item.icon}</span>
+                        <span class="name">..</span>
+                    </div>`;
+                }
+
+                if (item.type === 'directory') {
+                    const onclick = isRight
+                        ? `browseDirRight('${escapeAttr(item.path)}')`
+                        : `browseDirectory('${escapeAttr(item.path)}')`;
+                    const ctxmenu = APP_CONFIG.features?.file_operations
+                        ? ` oncontextmenu="showContextMenu(event, '${escapeAttr(item.path)}', 'directory')"`
+                        : '';
+                    return `<div class="file-item directory" onclick="${onclick}"${ctxmenu}>
+                        <span class="icon">${item.icon}</span>
+                        <span class="name">${escapeHtml(item.name)}</span>
+                        <span class="mtime">${mtimeStr}</span>
+                    </div>`;
+                }
+
+                // File
+                const clickable = item.viewable
+                    ? `onclick="loadFile('${escapeAttr(item.path)}')"` : '';
+                const className = item.viewable ? 'viewable' : 'not-viewable';
+                const ctxmenu = APP_CONFIG.features?.file_operations
+                    ? ` oncontextmenu="showContextMenu(event, '${escapeAttr(item.path)}', 'file')"` : '';
+                return `<div class="file-item ${className}" ${clickable}${ctxmenu}>
+                    <span class="icon">${item.icon}</span>
+                    <span class="name">${escapeHtml(item.name)}</span>
+                    <span class="mtime">${mtimeStr}</span>
+                    <span class="size">${item.size_human || ''}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // ── Navigation ─────────────────────────────────────────────
+        async function goToPath() {
+            const input = document.getElementById('pathInput').value.trim();
+            if (!input) return;
+
+            try {
+                const resp = await fetch(`${API_BASE}/check-path?path=${encodeURIComponent(input)}`);
+                const data = await resp.json();
+
+                if (data.is_file) {
+                    history.pushState({}, '', `?file=${encodeURIComponent(data.converted)}`);
+                    loadFile(data.converted);
+                } else if (data.is_dir) {
+                    history.pushState({}, '', `?dir=${encodeURIComponent(data.converted)}`);
+                    browseDirectory(data.converted);
+                } else {
+                    showError(`Path not found: ${input}`);
+                }
+            } catch (e) {
+                showError(e.message);
+            }
+        }
+
+        async function browseDirectory(dir) {
+            currentDir = dir;
+            document.getElementById('currentPath').textContent = dir;
+            document.getElementById('pathInput').value = dir;
+            updateFavButton();
+
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
+
+            try {
+                const resp = await fetch(`${API_BASE}/browse?dir=${encodeURIComponent(dir)}`);
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) throw new Error(data.error || 'Error');
+
+                document.getElementById('sidebarStats').innerHTML = `
+                    <span>📁 ${data.stats.directories}</span>
+                    <span>📄 ${data.stats.files}</span>
+                    <span>👁 ${data.stats.viewable}</span>
+                `;
+
+                currentItems = data.items;
+                applyFilterSort();
+            } catch (e) {
+                fileList.innerHTML = `<div class="error-box" style="margin: 0.5rem;">${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function browseDirRight(dir) {
+            currentDirRight = dir;
+            document.getElementById('currentPathRight').textContent = dir;
+
+            const fileList = document.getElementById('fileListRight');
+            fileList.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
+
+            try {
+                const resp = await fetch(`${API_BASE}/browse?dir=${encodeURIComponent(dir)}`);
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) throw new Error(data.error || 'Error');
+
+                document.getElementById('sidebarStatsRight').innerHTML = `
+                    <span>📁 ${data.stats.directories}</span>
+                    <span>📄 ${data.stats.files}</span>
+                `;
+
+                currentItemsRight = data.items;
+                applyFilterSortRight();
+            } catch (e) {
+                fileList.innerHTML = `<div class="error-box" style="margin: 0.5rem;">${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ── Load File ──────────────────────────────────────────────
+        async function loadFile(filepath) {
+            const content = document.getElementById('content');
+            const rawBtn = document.getElementById('rawBtn');
+
+            currentFile = filepath;
+            document.getElementById('pathInput').value = filepath;
+            updateFavButton();
+
+            content.innerHTML = `<div class="loading"><div class="spinner"></div><span>Loading ${escapeHtml(filepath)}...</span></div>`;
+
+            try {
+                const resp = await fetch(`${API_BASE}/view?file=${encodeURIComponent(filepath)}`);
+                const data = await resp.json();
+
+                if (!resp.ok || data.error) throw new Error(data.error || 'Unknown error');
+
+                content.innerHTML = `
+                    <div class="file-meta">
+                        <span>📄 ${escapeHtml(data.filename)}</span>
+                        <span>📁 ${escapeHtml(data.directory)}</span>
+                        <span>📏 ${(data.raw_length / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <div class="markdown-body">${data.html}</div>
+                `;
+
+                rawBtn.href = `${API_BASE}/raw?file=${encodeURIComponent(filepath)}`;
+                rawBtn.style.display = 'flex';
+                document.title = `${data.filename} - ${APP_CONFIG.title || 'FileView'}`;
+
+                // Also browse the file's directory in sidebar
+                const fileDir = data.directory.endsWith('/') ? data.directory : data.directory + '/';
+                if (fileDir !== currentDir) {
+                    browseDirectory(fileDir);
+                }
+
+                history.pushState({}, '', `?file=${encodeURIComponent(filepath)}`);
+            } catch (error) {
+                showError(error.message, filepath);
+                rawBtn.style.display = 'none';
+            }
+        }
+
+        function showError(message, path = '') {
+            document.getElementById('content').innerHTML = `
+                <div class="error-box">
+                    <h3>Error</h3>
+                    <p>${escapeHtml(message)}</p>
+                    ${path ? `<p style="margin-top: 1rem; font-size: 0.8rem;">Path: <code>${escapeHtml(path)}</code></p>` : ''}
+                </div>
+            `;
+        }
+
+        // ── Dual Panel ─────────────────────────────────────────────
+        function toggleDualPanel() {
+            const mc = document.getElementById('mainContainer');
+            const btn = document.getElementById('dualPanelBtn');
+            mc.classList.toggle('dual-panel');
+            btn.classList.toggle('active');
+
+            if (mc.classList.contains('dual-panel') && !currentDirRight) {
+                browseDirRight(currentDir);
+            }
+        }
+
+        // ── Context Menu (File Operations) ─────────────────────────
+        function showContextMenu(event, path, type) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const menu = document.getElementById('contextMenu');
+            let html = '';
+
+            if (type === 'file') {
+                html += `<div class="context-menu-item" onclick="promptRename('${escapeAttr(path)}')">✏️ Rename</div>`;
+                html += `<div class="context-menu-item" onclick="promptCopy('${escapeAttr(path)}')">📋 Copy to...</div>`;
+                html += `<div class="context-menu-item" onclick="promptMove('${escapeAttr(path)}')">📦 Move to...</div>`;
+                html += `<div class="context-menu-sep"></div>`;
+                html += `<div class="context-menu-item danger" onclick="promptDelete('${escapeAttr(path)}')">🗑 Delete</div>`;
+            } else {
+                html += `<div class="context-menu-item" onclick="promptRename('${escapeAttr(path)}')">✏️ Rename</div>`;
+                html += `<div class="context-menu-item" onclick="promptCopy('${escapeAttr(path)}')">📋 Copy to...</div>`;
+                html += `<div class="context-menu-item" onclick="promptMove('${escapeAttr(path)}')">📦 Move to...</div>`;
+            }
+
+            menu.innerHTML = html;
+            menu.style.left = event.clientX + 'px';
+            menu.style.top = event.clientY + 'px';
+            menu.classList.add('visible');
+        }
+
+        // ── File Operation Modals ──────────────────────────────────
+        function promptRename(path) {
+            const name = path.split('/').pop();
+            showModal('Rename', `
+                <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.8rem;">${escapeHtml(path)}</p>
+                <input type="text" id="modalInput" value="${escapeAttr(name)}">
+                <div class="modal-actions">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn primary" onclick="doRename('${escapeAttr(path)}')">Rename</button>
+                </div>
+            `);
+            setTimeout(() => {
+                const inp = document.getElementById('modalInput');
+                inp.focus();
+                const dot = name.lastIndexOf('.');
+                if (dot > 0) inp.setSelectionRange(0, dot);
+                else inp.select();
+            }, 50);
+        }
+
+        async function doRename(path) {
+            const newName = document.getElementById('modalInput').value.trim();
+            if (!newName) return;
+
+            try {
+                const resp = await fetch(`${API_BASE}/files/rename`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, new_name: newName }),
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                closeModal();
+                toast('Renamed successfully', 'success');
+                browseDirectory(currentDir);
+            } catch (e) {
+                toast(e.message, 'error');
+            }
+        }
+
+        function promptCopy(source) {
+            const dest = currentDirRight || currentDir;
+            const name = source.split('/').pop();
+            showModal('Copy', `
+                <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.8rem;">From: ${escapeHtml(source)}</p>
+                <input type="text" id="modalInput" value="${escapeAttr(dest + name)}" placeholder="Destination path">
+                <div class="modal-actions">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn primary" onclick="doCopy('${escapeAttr(source)}')">Copy</button>
+                </div>
+            `);
+            document.getElementById('modalInput').focus();
+        }
+
+        async function doCopy(source) {
+            const destination = document.getElementById('modalInput').value.trim();
+            if (!destination) return;
+
+            try {
+                const resp = await fetch(`${API_BASE}/files/copy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source, destination }),
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                closeModal();
+                toast('Copied successfully', 'success');
+                browseDirectory(currentDir);
+                if (currentDirRight) browseDirRight(currentDirRight);
+            } catch (e) {
+                toast(e.message, 'error');
+            }
+        }
+
+        function promptMove(source) {
+            const dest = currentDirRight || currentDir;
+            const name = source.split('/').pop();
+            showModal('Move', `
+                <p style="color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.8rem;">From: ${escapeHtml(source)}</p>
+                <input type="text" id="modalInput" value="${escapeAttr(dest + name)}" placeholder="Destination path">
+                <div class="modal-actions">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn primary" onclick="doMove('${escapeAttr(source)}')">Move</button>
+                </div>
+            `);
+            document.getElementById('modalInput').focus();
+        }
+
+        async function doMove(source) {
+            const destination = document.getElementById('modalInput').value.trim();
+            if (!destination) return;
+
+            try {
+                const resp = await fetch(`${API_BASE}/files/move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source, destination }),
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                closeModal();
+                toast('Moved successfully', 'success');
+                browseDirectory(currentDir);
+                if (currentDirRight) browseDirRight(currentDirRight);
+            } catch (e) {
+                toast(e.message, 'error');
+            }
+        }
+
+        function promptDelete(path) {
+            showModal('Delete', `
+                <p style="color: var(--accent-red);">Are you sure you want to delete this file?</p>
+                <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem; word-break: break-all;">${escapeHtml(path)}</p>
+                <div class="modal-actions" style="margin-top: 1rem;">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn" style="background: var(--accent-red); border-color: var(--accent-red); color: white;" onclick="doDelete('${escapeAttr(path)}')">Delete</button>
+                </div>
+            `);
+        }
+
+        async function doDelete(path) {
+            try {
+                const resp = await fetch(`${API_BASE}/files/delete`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path }),
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                closeModal();
+                toast('Deleted', 'success');
+                browseDirectory(currentDir);
+            } catch (e) {
+                toast(e.message, 'error');
+            }
+        }
+
+        // ── Modal Helpers ──────────────────────────────────────────
+        function showModal(title, content) {
+            document.getElementById('modal').innerHTML = `<h3>${title}</h3>${content}`;
+            document.getElementById('modalOverlay').classList.add('visible');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('visible');
+        }
+
+        // ── Toast ──────────────────────────────────────────────────
+        function toast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.textContent = message;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 4000);
+        }
+
+        // ── Helpers ────────────────────────────────────────────────
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
