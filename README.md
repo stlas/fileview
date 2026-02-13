@@ -2,6 +2,8 @@
 
 A lightweight web-based file viewer for your LAN. Browse directories, view Markdown rendered as HTML, and read source code with syntax highlighting -- all from your browser.
 
+![FileView Screenshot](screenshot.png)
+
 ## Quick Start
 
 ```bash
