@@ -1022,7 +1022,10 @@
                         ${info.width ? `<span>📐 ${info.width}×${info.height}</span>` : ''}
                     </div>
                     <div class="image-preview">
-                        <img src="${imgUrl}" alt="${escapeHtml(info.filename)}" onclick="window.open('${imgUrl}', '_blank')">
+                        <div style="position: relative; display: inline-block;">
+                            <img src="${imgUrl}" alt="${escapeHtml(info.filename)}">
+                            <button class="btn" onclick="window.open('${imgUrl}', '_blank')" style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(13,17,23,0.8); backdrop-filter: blur(4px);" title="Open in new tab">↗ Open</button>
+                        </div>
                         <div class="image-meta-grid">${metaRows}</div>
                     </div>
                 `;
@@ -1118,6 +1121,12 @@
             let html = '';
 
             if (type === 'file') {
+                if (isImageFile(path)) {
+                    html += `<div class="context-menu-item" onclick="window.open(API_BASE+'/image?file='+encodeURIComponent('${escapeAttr(path)}'),'_blank')">↗ Open in new tab</div>`;
+                } else {
+                    html += `<div class="context-menu-item" onclick="window.open(API_BASE+'/raw?file='+encodeURIComponent('${escapeAttr(path)}'),'_blank')">↗ Open in new tab</div>`;
+                }
+                html += `<div class="context-menu-sep"></div>`;
                 html += `<div class="context-menu-item" onclick="promptRename('${escapeAttr(path)}')">✏️ Rename</div>`;
                 html += `<div class="context-menu-item" onclick="promptCopy('${escapeAttr(path)}')">📋 Copy to...</div>`;
                 html += `<div class="context-menu-item" onclick="promptMove('${escapeAttr(path)}')">📦 Move to...</div>`;
