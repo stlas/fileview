@@ -4,12 +4,13 @@ FileView - A lightweight file viewer for your LAN
 Renders Markdown, syntax-highlights code, and browses directories.
 """
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, send_file
 from flask_cors import CORS
 import markdown
 import json
 import os
 import re
+from datetime import datetime
 import shutil
 import sys
 
@@ -92,6 +93,8 @@ VIEWABLE_EXTENSIONS = [
     '.ts', '.tsx', '.jsx', '.sql', '.r', '.rb', '.php', '.pl',
     '.lua', '.vim', '.csv', '.diff', '.patch', '.bat', '.ps1',
 ]
+
+IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff', '.tif']
 
 LANG_MAP = {
     '.json': 'json', '.yaml': 'yaml', '.yml': 'yaml',
@@ -265,7 +268,7 @@ def browse_directory():
                 else:
                     ext = os.path.splitext(entry)[1].lower()
                     size = os.path.getsize(full_path)
-                    viewable = ext in VIEWABLE_EXTENSIONS or ext == ''
+                    viewable = ext in VIEWABLE_EXTENSIONS or ext in IMAGE_EXTENSIONS or ext == ''
 
                     items.append({
                         'name': entry,
@@ -315,6 +318,92 @@ def check_path():
         'is_dir': os.path.isdir(path),
         'allowed': is_path_allowed(path),
     })
+
+# ── API: Image Preview ───────────────────────────────────────────────────────
+
+@app.route('/api/image')
+def serve_image():
+    """Serve an image file directly"""
+    filepath = request.args.get('file', '')
+
+    if not filepath or not is_path_allowed(filepath):
+        return jsonify({'error': 'Not allowed'}), 403
+
+    if not os.path.isfile(filepath):
+        return jsonify({'error': 'Not found'}), 404
+
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext not in IMAGE_EXTENSIONS:
+        return jsonify({'error': 'Not an image'}), 400
+
+    return send_file(filepath)
+
+@app.route('/api/image/info')
+def image_info():
+    """Return image metadata (dimensions, format, EXIF basics)"""
+    filepath = request.args.get('file', '')
+
+    if not filepath or not is_path_allowed(filepath):
+        return jsonify({'error': 'Not allowed'}), 403
+
+    if not os.path.isfile(filepath):
+        return jsonify({'error': 'Not found'}), 404
+
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext not in IMAGE_EXTENSIONS:
+        return jsonify({'error': 'Not an image'}), 400
+
+    stat = os.stat(filepath)
+    info = {
+        'success': True,
+        'file': filepath,
+        'filename': os.path.basename(filepath),
+        'directory': os.path.dirname(filepath),
+        'extension': ext,
+        'size': stat.st_size,
+        'size_human': format_size(stat.st_size),
+        'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+        'created': datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+    }
+
+    # Try to get dimensions with Pillow
+    try:
+        from PIL import Image
+        from PIL.ExifTags import TAGS
+        img = Image.open(filepath)
+        info['width'] = img.width
+        info['height'] = img.height
+        info['format'] = img.format or ext.lstrip('.')
+        info['mode'] = img.mode  # RGB, RGBA, L, etc.
+
+        # Basic EXIF data
+        exif_data = {}
+        try:
+            raw_exif = img._getexif()
+            if raw_exif:
+                for tag_id, value in raw_exif.items():
+                    tag = TAGS.get(tag_id, tag_id)
+                    if tag in ('Make', 'Model', 'DateTime', 'ExposureTime',
+                               'FNumber', 'ISOSpeedRatings', 'FocalLength',
+                               'ImageWidth', 'ImageLength', 'Software'):
+                        exif_data[tag] = str(value)
+        except Exception:
+            pass
+        if exif_data:
+            info['exif'] = exif_data
+
+        img.close()
+    except ImportError:
+        # Pillow not available - return without dimensions
+        info['width'] = None
+        info['height'] = None
+        info['format'] = ext.lstrip('.')
+    except Exception as e:
+        info['width'] = None
+        info['height'] = None
+        info['format'] = ext.lstrip('.')
+
+    return jsonify(info)
 
 # ── API: File Operations (optional, config-gated) ───────────────────────────
 

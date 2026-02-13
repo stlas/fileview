@@ -351,6 +351,45 @@
 
         .file-meta span { display: flex; align-items: center; gap: 0.25rem; }
 
+        /* ── Image Preview ──────────────────────────────────────── */
+        .image-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: calc(100vh - 250px);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: repeating-conic-gradient(#1a1f26 0% 25%, #21262d 0% 50%) 50% / 20px 20px;
+        }
+
+        .image-meta-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.25rem 1rem;
+            font-size: 0.8rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            width: fit-content;
+            max-width: 100%;
+        }
+
+        .image-meta-grid .label {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .image-meta-grid .value {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            word-break: break-all;
+        }
+
         /* ── Toast Notifications ────────────────────────────────── */
         .toast-container {
             position: fixed;
@@ -890,6 +929,13 @@
         }
 
         // ── Load File ──────────────────────────────────────────────
+        const IMAGE_EXTS = ['.png','.jpg','.jpeg','.gif','.bmp','.webp','.svg','.ico','.tiff','.tif'];
+
+        function isImageFile(filepath) {
+            const ext = filepath.substring(filepath.lastIndexOf('.')).toLowerCase();
+            return IMAGE_EXTS.includes(ext);
+        }
+
         async function loadFile(filepath) {
             const content = document.getElementById('content');
             const rawBtn = document.getElementById('rawBtn');
@@ -897,6 +943,11 @@
             currentFile = filepath;
             document.getElementById('pathInput').value = filepath;
             updateFavButton();
+
+            // Image files get special treatment
+            if (isImageFile(filepath)) {
+                return loadImage(filepath);
+            }
 
             content.innerHTML = `<div class="loading"><div class="spinner"></div><span>Loading ${escapeHtml(filepath)}...</span></div>`;
 
@@ -919,11 +970,69 @@
                 rawBtn.style.display = 'flex';
                 document.title = `${data.filename} - ${APP_CONFIG.title || 'FileView'}`;
 
-                // Also browse the file's directory in sidebar
                 const fileDir = data.directory.endsWith('/') ? data.directory : data.directory + '/';
-                if (fileDir !== currentDir) {
-                    browseDirectory(fileDir);
+                if (fileDir !== currentDir) browseDirectory(fileDir);
+
+                history.pushState({}, '', `?file=${encodeURIComponent(filepath)}`);
+            } catch (error) {
+                showError(error.message, filepath);
+                rawBtn.style.display = 'none';
+            }
+        }
+
+        async function loadImage(filepath) {
+            const content = document.getElementById('content');
+            const rawBtn = document.getElementById('rawBtn');
+
+            content.innerHTML = `<div class="loading"><div class="spinner"></div><span>Loading image...</span></div>`;
+
+            try {
+                const resp = await fetch(`${API_BASE}/image/info?file=${encodeURIComponent(filepath)}`);
+                const info = await resp.json();
+
+                if (!resp.ok || info.error) throw new Error(info.error || 'Unknown error');
+
+                const imgUrl = `${API_BASE}/image?file=${encodeURIComponent(filepath)}`;
+
+                let metaRows = '';
+                metaRows += `<span class="label">Filename</span><span class="value">${escapeHtml(info.filename)}</span>`;
+                metaRows += `<span class="label">Directory</span><span class="value">${escapeHtml(info.directory)}</span>`;
+                if (info.width && info.height) {
+                    metaRows += `<span class="label">Dimensions</span><span class="value">${info.width} × ${info.height} px</span>`;
                 }
+                metaRows += `<span class="label">Size</span><span class="value">${escapeHtml(info.size_human)}</span>`;
+                metaRows += `<span class="label">Format</span><span class="value">${escapeHtml(info.format || info.extension)}</span>`;
+                if (info.mode) {
+                    metaRows += `<span class="label">Color</span><span class="value">${escapeHtml(info.mode)}</span>`;
+                }
+                metaRows += `<span class="label">Modified</span><span class="value">${escapeHtml(info.modified)}</span>`;
+
+                if (info.exif) {
+                    const exifEntries = Object.entries(info.exif);
+                    exifEntries.forEach(([key, val]) => {
+                        metaRows += `<span class="label">${escapeHtml(key)}</span><span class="value">${escapeHtml(val)}</span>`;
+                    });
+                }
+
+                content.innerHTML = `
+                    <div class="file-meta">
+                        <span>🖼️ ${escapeHtml(info.filename)}</span>
+                        <span>📁 ${escapeHtml(info.directory)}</span>
+                        <span>📏 ${escapeHtml(info.size_human)}</span>
+                        ${info.width ? `<span>📐 ${info.width}×${info.height}</span>` : ''}
+                    </div>
+                    <div class="image-preview">
+                        <img src="${imgUrl}" alt="${escapeHtml(info.filename)}" onclick="window.open('${imgUrl}', '_blank')">
+                        <div class="image-meta-grid">${metaRows}</div>
+                    </div>
+                `;
+
+                rawBtn.href = imgUrl;
+                rawBtn.style.display = 'flex';
+                document.title = `${info.filename} - ${APP_CONFIG.title || 'FileView'}`;
+
+                const fileDir = info.directory.endsWith('/') ? info.directory : info.directory + '/';
+                if (fileDir !== currentDir) browseDirectory(fileDir);
 
                 history.pushState({}, '', `?file=${encodeURIComponent(filepath)}`);
             } catch (error) {
