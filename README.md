@@ -173,4 +173,4 @@ Public Domain ([The Unlicense](https://unlicense.org)). Use it however you want.
 
 ## Credits
 
-Built by the [RASSELBANDE](https://github.com/stlas) -- a collaborative AI development team.
+Created by [Stefan](https://github.com/stlas) and the [RASSELBANDE](https://github.com/stlas) -- a human-AI development team.
