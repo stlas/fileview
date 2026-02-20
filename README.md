@@ -27,12 +27,16 @@ Open `http://localhost:8080` in your browser.
 
 - **Markdown rendering** with tables, code blocks, syntax highlighting, and table of contents
 - **Source code viewer** with syntax highlighting for 30+ languages
-- **File browser** with directory navigation
-- **Favorites** saved in your browser (localStorage)
-- **Filter & Sort** files by name, date, or size
-- **Dual-panel mode** (Total Commander style) for side-by-side browsing
+- **File browser** with directory navigation and resizable sidebar sections
+- **Column headers** with click-to-sort (Name, Date, Size) and sort direction indicators
+- **Resizable columns** -- drag column borders to adjust Date and Size widths
+- **Favorites** with resizable section height, saved in your browser (localStorage)
+- **Filter & Sort** files by name, date, or size via column headers
+- **Dual-panel mode** (Total Commander style) -- two full-width file panels with resizable split
+- **Image preview** with EXIF metadata display
 - **Optional file operations** -- copy, move, rename, delete (disabled by default)
 - **Path conversion** -- map Windows drive letters to Linux paths (e.g. `V:\` to `/srv/files/`)
+- **Persistent layout** -- all column widths, panel splits, and section heights saved in localStorage
 - **Dark theme** optimized for readability
 - **Single-file frontend** -- just `index.html`, no build step
 - **Path security** -- only serves files from configured allowed directories
@@ -121,6 +125,8 @@ Files without an extension (e.g. `Makefile`, `LICENSE`, `Dockerfile`) are displa
 | GET | `/api/raw?file=PATH` | Raw file content as plain text |
 | GET | `/api/browse?dir=PATH` | List directory contents |
 | GET | `/api/check-path?path=PATH` | Check if path exists and its type |
+| GET | `/api/image?file=PATH` | Serve image file |
+| GET | `/api/image/info?file=PATH` | Image metadata (dimensions, EXIF) |
 | POST | `/api/files/copy` | Copy file/directory (if enabled) |
 | POST | `/api/files/move` | Move file/directory (if enabled) |
 | POST | `/api/files/rename` | Rename file/directory (if enabled) |

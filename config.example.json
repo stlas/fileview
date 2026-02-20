@@ -8,6 +8,7 @@
         {"name": "Documents", "path": "/srv/files/docs/", "icon": "📚"},
         {"name": "Projects", "path": "/srv/files/projects/", "icon": "🚀"}
     ],
+    "cors_origins": ["http://localhost:8080"],
     "features": {
         "file_operations": false,
         "favorites": true,

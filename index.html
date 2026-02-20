@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FileView</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
     <style>
         :root {
             --bg-primary: #0d1117;
@@ -22,6 +23,12 @@
             --accent-yellow: #e3b341;
             --border-color: rgba(240, 246, 252, 0.1);
             --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+            /* Column & layout */
+            --col-date-w: 90px;
+            --col-size-w: 70px;
+            --col-date-w-r: 90px;
+            --col-size-w-r: 70px;
+            --fav-height: 150px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -136,8 +143,9 @@
         }
 
         .main-container.dual-panel {
-            grid-template-columns: 300px 1fr 300px;
+            grid-template-columns: 1fr 5px 1fr;
         }
+        .main-container.dual-panel .content { display: none; }
 
         @media (max-width: 900px) {
             .main-container { grid-template-columns: 1fr; }
@@ -185,8 +193,10 @@
         /* ── Favorites Section ──────────────────────────────────── */
         .favorites-section {
             border-bottom: 1px solid var(--border-color);
-            max-height: 200px;
+            height: var(--fav-height);
+            min-height: 40px;
             overflow-y: auto;
+            flex-shrink: 0;
         }
 
         .favorites-header {
@@ -275,7 +285,8 @@
         }
 
         .file-item {
-            display: flex;
+            display: grid;
+            grid-template-columns: 24px 1fr var(--col-date-w) var(--col-size-w);
             align-items: center;
             gap: 0.4rem;
             padding: 0.35rem 0.5rem;
@@ -285,15 +296,19 @@
             font-size: 0.8rem;
         }
 
+        .panel-right .file-item {
+            grid-template-columns: 24px 1fr var(--col-date-w-r) var(--col-size-w-r);
+        }
+
         .file-item:hover { background: var(--bg-tertiary); }
         .file-item.directory { color: var(--accent-blue); }
         .file-item.viewable { color: var(--accent-green); }
         .file-item.not-viewable { color: var(--text-secondary); cursor: default; }
 
-        .file-item .icon { font-size: 0.9rem; width: 1.25rem; text-align: center; }
-        .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .file-item .size { font-size: 0.7rem; color: var(--text-secondary); }
-        .file-item .mtime { font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; }
+        .file-item .icon { font-size: 0.9rem; width: 24px; text-align: center; }
+        .file-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .size { font-size: 0.7rem; color: var(--text-secondary); text-align: right; overflow: hidden; text-overflow: ellipsis; }
+        .file-item .mtime { font-size: 0.65rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* ── Content Area ───────────────────────────────────────── */
         .content {
@@ -495,6 +510,77 @@
         }
 
         .main-container.dual-panel .panel-right { display: flex; }
+
+        /* ── Panel Resize Handle ──────────────────────────────── */
+        .panel-resize-handle {
+            display: none;
+            background: var(--bg-tertiary);
+            cursor: col-resize;
+            transition: background 0.15s;
+        }
+        .panel-resize-handle:hover, .panel-resize-handle.active { background: var(--accent-blue); }
+        .main-container.dual-panel .panel-resize-handle { display: block; }
+
+        /* ── Favorites Resize Handle ─────────────────────────── */
+        .fav-resize-handle {
+            height: 5px;
+            background: var(--bg-tertiary);
+            cursor: row-resize;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .fav-resize-handle:hover, .fav-resize-handle.active { background: var(--accent-blue); }
+
+        /* ── Column Headers ───────────────────────────────────── */
+        .column-headers {
+            display: grid;
+            grid-template-columns: 24px 1fr var(--col-date-w) var(--col-size-w);
+            gap: 0.4rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .panel-right .column-headers {
+            grid-template-columns: 24px 1fr var(--col-date-w-r) var(--col-size-w-r);
+        }
+        .col-hdr {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            position: relative;
+            white-space: nowrap;
+            overflow: hidden;
+            padding: 0.15rem 0;
+        }
+        .col-hdr:first-child { cursor: default; }
+        .col-hdr:hover { color: var(--text-primary); }
+        .col-hdr.active { color: var(--accent-blue); }
+        .col-hdr .sort-arrow { font-size: 0.6rem; opacity: 0; }
+        .col-hdr.active .sort-arrow { opacity: 1; }
+        .col-resize {
+            position: absolute;
+            left: -4px;
+            top: 0;
+            bottom: 0;
+            width: 7px;
+            cursor: col-resize;
+            z-index: 5;
+        }
+        .col-resize:hover::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: var(--accent-blue);
+        }
     </style>
 </head>
 <body>
@@ -534,13 +620,20 @@
                 <div id="favoritesList"></div>
             </div>
 
-            <!-- Filter & Sort -->
+            <div class="fav-resize-handle" id="favResizeHandle"></div>
+
+            <!-- Filter -->
             <div class="filter-bar">
                 <input type="text" class="filter-input" id="filterInput" placeholder="Filter..." oninput="applyFilterSort()">
-                <button class="sort-btn active" data-sort="name" onclick="setSort('name')">Name</button>
-                <button class="sort-btn" data-sort="date" onclick="setSort('date')">Date</button>
-                <button class="sort-btn" data-sort="size" onclick="setSort('size')">Size</button>
                 <button class="sort-btn" id="newBtn" onclick="promptNew()" title="New file or folder" style="display:none;">+New</button>
+            </div>
+
+            <!-- Column Headers -->
+            <div class="column-headers" id="columnHeaders">
+                <span class="col-hdr"></span>
+                <span class="col-hdr active" data-sort-col="name" onclick="setSort('name')">Name <span class="sort-arrow">&#9650;</span></span>
+                <span class="col-hdr" data-sort-col="date" onclick="setSort('date')"><span class="col-resize" onmousedown="event.stopPropagation(); startColResize(event, '--col-date-w')" onclick="event.stopPropagation()"></span>Date <span class="sort-arrow"></span></span>
+                <span class="col-hdr" data-sort-col="size" onclick="setSort('size')"><span class="col-resize" onmousedown="event.stopPropagation(); startColResize(event, '--col-size-w')" onclick="event.stopPropagation()"></span>Size <span class="sort-arrow"></span></span>
             </div>
 
             <div class="file-list" id="fileList">
@@ -558,6 +651,9 @@
             </div>
         </main>
 
+        <!-- Panel Resize Handle (dual mode) -->
+        <div class="panel-resize-handle" id="panelResizeHandle"></div>
+
         <!-- Right Panel (dual mode) -->
         <aside class="sidebar panel-right" id="panelRight">
             <div class="sidebar-header">
@@ -567,9 +663,12 @@
             </div>
             <div class="filter-bar">
                 <input type="text" class="filter-input" id="filterInputRight" placeholder="Filter..." oninput="applyFilterSortRight()">
-                <button class="sort-btn active" data-sort-r="name" onclick="setSortRight('name')">Name</button>
-                <button class="sort-btn" data-sort-r="date" onclick="setSortRight('date')">Date</button>
-                <button class="sort-btn" data-sort-r="size" onclick="setSortRight('size')">Size</button>
+            </div>
+            <div class="column-headers" id="columnHeadersRight">
+                <span class="col-hdr"></span>
+                <span class="col-hdr active" data-sort-col="name" onclick="setSortRight('name')">Name <span class="sort-arrow">&#9650;</span></span>
+                <span class="col-hdr" data-sort-col="date" onclick="setSortRight('date')"><span class="col-resize" onmousedown="event.stopPropagation(); startColResize(event, '--col-date-w-r')" onclick="event.stopPropagation()"></span>Date <span class="sort-arrow"></span></span>
+                <span class="col-hdr" data-sort-col="size" onclick="setSortRight('size')"><span class="col-resize" onmousedown="event.stopPropagation(); startColResize(event, '--col-size-w-r')" onclick="event.stopPropagation()"></span>Size <span class="sort-arrow"></span></span>
             </div>
             <div class="file-list" id="fileListRight"></div>
         </aside>
@@ -599,6 +698,7 @@
         let currentSortRight = 'name';
         let currentSortDirRight = 1;
         let favorites = [];
+        let panelSplit = 50;
 
         const API_BASE = window.location.origin + '/api';
 
@@ -626,6 +726,9 @@
 
             // Load user favorites from localStorage
             loadFavorites();
+
+            // Restore layout settings from localStorage
+            restoreLayoutSettings();
 
             // URL params
             const params = new URLSearchParams(window.location.search);
@@ -687,11 +790,15 @@
 
             if (favorites.length === 0 && !hasConfigFavs) {
                 section.style.display = 'none';
+                const rh = document.getElementById('favResizeHandle');
+                if (rh) rh.style.display = 'none';
                 list.innerHTML = '';
                 return;
             }
 
             section.style.display = 'block';
+            const rh = document.getElementById('favResizeHandle');
+            if (rh) rh.style.display = '';
 
             if (favorites.length === 0) {
                 list.innerHTML = '';
@@ -750,8 +857,7 @@
                 currentSort = field;
                 currentSortDir = 1;
             }
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.sort-btn[data-sort="${field}"]`).classList.add('active');
+            updateSortHeaders('columnHeaders', field, currentSortDir);
             applyFilterSort();
         }
 
@@ -772,9 +878,19 @@
                 currentSortRight = field;
                 currentSortDirRight = 1;
             }
-            document.querySelectorAll('[data-sort-r]').forEach(b => b.classList.remove('active'));
-            document.querySelector(`[data-sort-r="${field}"]`).classList.add('active');
+            updateSortHeaders('columnHeadersRight', field, currentSortDirRight);
             applyFilterSortRight();
+        }
+
+        function updateSortHeaders(headerId, field, dir) {
+            const headers = document.getElementById(headerId);
+            if (!headers) return;
+            headers.querySelectorAll('.col-hdr[data-sort-col]').forEach(h => {
+                const isActive = h.dataset.sortCol === field;
+                h.classList.toggle('active', isActive);
+                const arrow = h.querySelector('.sort-arrow');
+                if (arrow) arrow.textContent = isActive ? (dir === 1 ? '\u25B2' : '\u25BC') : '';
+            });
         }
 
         function renderFileList(items, containerId, filter, sortField, sortDir, isRight) {
@@ -820,6 +936,8 @@
                     return `<div class="file-item directory" onclick="${onclick}">
                         <span class="icon">${item.icon}</span>
                         <span class="name">..</span>
+                        <span class="mtime"></span>
+                        <span class="size"></span>
                     </div>`;
                 }
 
@@ -834,6 +952,7 @@
                         <span class="icon">${item.icon}</span>
                         <span class="name">${escapeHtml(item.name)}</span>
                         <span class="mtime">${mtimeStr}</span>
+                        <span class="size"></span>
                     </div>`;
                 }
 
@@ -875,10 +994,13 @@
             }
         }
 
-        async function browseDirectory(dir) {
+        async function browseDirectory(dir, fromLoadFile) {
             currentDir = dir;
+            if (!fromLoadFile) currentFile = null;
             document.getElementById('currentPath').textContent = dir;
-            document.getElementById('pathInput').value = dir;
+            if (!currentFile) {
+                document.getElementById('pathInput').value = dir;
+            }
             updateFavButton();
 
             const fileList = document.getElementById('fileList');
@@ -957,13 +1079,13 @@
 
                 if (!resp.ok || data.error) throw new Error(data.error || 'Unknown error');
 
+                const fullPath = data.directory.endsWith('/') ? data.directory + data.filename : data.directory + '/' + data.filename;
                 content.innerHTML = `
                     <div class="file-meta">
-                        <span>📄 ${escapeHtml(data.filename)}</span>
-                        <span>📁 ${escapeHtml(data.directory)}</span>
+                        <span style="cursor:pointer;user-select:all" title="Klicken zum Kopieren" onclick="navigator.clipboard.writeText('${escapeHtml(fullPath)}')">📁 ${escapeHtml(fullPath)}</span>
                         <span>📏 ${(data.raw_length / 1024).toFixed(1)} KB</span>
                     </div>
-                    <div class="markdown-body">${data.html}</div>
+                    <div class="markdown-body">${typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(data.html) : escapeHtml(data.html)}</div>
                 `;
 
                 rawBtn.href = `${API_BASE}/raw?file=${encodeURIComponent(filepath)}`;
@@ -971,7 +1093,7 @@
                 document.title = `${data.filename} - ${APP_CONFIG.title || 'FileView'}`;
 
                 const fileDir = data.directory.endsWith('/') ? data.directory : data.directory + '/';
-                if (fileDir !== currentDir) browseDirectory(fileDir);
+                if (fileDir !== currentDir) browseDirectory(fileDir, true);
 
                 history.pushState({}, '', `?file=${encodeURIComponent(filepath)}`);
             } catch (error) {
@@ -1035,7 +1157,7 @@
                 document.title = `${info.filename} - ${APP_CONFIG.title || 'FileView'}`;
 
                 const fileDir = info.directory.endsWith('/') ? info.directory : info.directory + '/';
-                if (fileDir !== currentDir) browseDirectory(fileDir);
+                if (fileDir !== currentDir) browseDirectory(fileDir, true);
 
                 history.pushState({}, '', `?file=${encodeURIComponent(filepath)}`);
             } catch (error) {
@@ -1061,8 +1183,16 @@
             mc.classList.toggle('dual-panel');
             btn.classList.toggle('active');
 
-            if (mc.classList.contains('dual-panel') && !currentDirRight) {
-                browseDirRight(currentDir);
+            const isDual = mc.classList.contains('dual-panel');
+            if (isDual) {
+                const saved = localStorage.getItem('fileview-panel-split');
+                if (saved) {
+                    panelSplit = parseFloat(saved);
+                    mc.style.gridTemplateColumns = `${panelSplit}% 5px 1fr`;
+                }
+                if (!currentDirRight) browseDirRight(currentDir);
+            } else {
+                mc.style.gridTemplateColumns = '';
             }
         }
 
@@ -1300,6 +1430,107 @@
             el.textContent = message;
             container.appendChild(el);
             setTimeout(() => el.remove(), 4000);
+        }
+
+        // ── Layout Settings ───────────────────────────────────────
+        function restoreLayoutSettings() {
+            const favH = localStorage.getItem('fileview-fav-height');
+            if (favH) document.documentElement.style.setProperty('--fav-height', favH + 'px');
+
+            ['--col-date-w', '--col-size-w', '--col-date-w-r', '--col-size-w-r'].forEach(v => {
+                const val = localStorage.getItem('fileview-' + v);
+                if (val) document.documentElement.style.setProperty(v, val + 'px');
+            });
+        }
+
+        // ── Favorites Resize ──────────────────────────────────────
+        (function initFavResize() {
+            document.addEventListener('DOMContentLoaded', () => {
+                const handle = document.getElementById('favResizeHandle');
+                if (!handle) return;
+                let startY, startH;
+
+                handle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const favSection = document.getElementById('favoritesSection');
+                    startY = e.clientY;
+                    startH = favSection.offsetHeight;
+                    handle.classList.add('active');
+
+                    function onMove(ev) {
+                        const delta = ev.clientY - startY;
+                        const newH = Math.max(40, Math.min(window.innerHeight * 0.6, startH + delta));
+                        document.documentElement.style.setProperty('--fav-height', newH + 'px');
+                    }
+
+                    function onUp() {
+                        handle.classList.remove('active');
+                        const h = document.getElementById('favoritesSection').offsetHeight;
+                        localStorage.setItem('fileview-fav-height', h);
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    }
+
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            });
+        })();
+
+        // ── Panel Resize (Dual Mode) ─────────────────────────────
+        (function initPanelResize() {
+            document.addEventListener('DOMContentLoaded', () => {
+                const handle = document.getElementById('panelResizeHandle');
+                if (!handle) return;
+
+                handle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const mc = document.getElementById('mainContainer');
+                    const mcRect = mc.getBoundingClientRect();
+                    handle.classList.add('active');
+
+                    function onMove(ev) {
+                        const pct = ((ev.clientX - mcRect.left) / mcRect.width) * 100;
+                        const clamped = Math.max(20, Math.min(80, pct));
+                        mc.style.gridTemplateColumns = `${clamped}% 5px 1fr`;
+                        panelSplit = clamped;
+                    }
+
+                    function onUp() {
+                        handle.classList.remove('active');
+                        localStorage.setItem('fileview-panel-split', panelSplit);
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    }
+
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            });
+        })();
+
+        // ── Column Resize ─────────────────────────────────────────
+        function startColResize(e, cssVar) {
+            e.preventDefault();
+            e.stopPropagation();
+            const startX = e.clientX;
+            const current = parseInt(getComputedStyle(document.documentElement).getPropertyValue(cssVar)) || 90;
+
+            function onMove(ev) {
+                const delta = startX - ev.clientX;
+                const newW = Math.max(40, Math.min(250, current + delta));
+                document.documentElement.style.setProperty(cssVar, newW + 'px');
+            }
+
+            function onUp() {
+                const val = parseInt(getComputedStyle(document.documentElement).getPropertyValue(cssVar));
+                localStorage.setItem('fileview-' + cssVar, val);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
         }
 
         // ── Helpers ────────────────────────────────────────────────
