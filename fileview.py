@@ -71,6 +71,26 @@ def convert_internal_links(html, base_path):
     html = re.sub(pattern, replace_link, html)
     return html
 
+def convert_relative_images(html, base_path):
+    """Convert relative image src paths to /api/image?file=... URLs"""
+    base_dir = os.path.dirname(base_path)
+
+    def replace_img(match):
+        prefix = match.group(1)
+        src = match.group(2)
+        # Skip absolute URLs and data URIs
+        if src.startswith(('http://', 'https://', '/', 'data:')):
+            return match.group(0)
+        # Resolve relative path
+        abs_path = os.path.normpath(os.path.join(base_dir, src))
+        ext = os.path.splitext(abs_path)[1].lower()
+        if ext in IMAGE_EXTENSIONS and is_path_allowed(abs_path):
+            from urllib.parse import quote
+            return f'{prefix}/api/image?file={quote(abs_path, safe="/")}"'
+        return match.group(0)
+
+    return re.sub(r'(<img\s[^>]*src=")([^"]+)"', replace_img, html)
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def format_size(size):
@@ -178,6 +198,7 @@ def view_file():
             html = _re.sub(r'<a\s([^>]*)href\s*=\s*["\']javascript:[^"\']*["\']', '<a \\1href="#"', html, flags=_re.IGNORECASE)
             html = _re.sub(r'<a\s([^>]*)href\s*=\s*["\']data:[^"\']*["\']', '<a \\1href="#"', html, flags=_re.IGNORECASE)
             html = convert_internal_links(html, filepath)
+            html = convert_relative_images(html, filepath)
             meta = getattr(md, 'Meta', {})
             toc = getattr(md, 'toc', '')
         else:
@@ -594,15 +615,18 @@ def file_new_folder():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ── Init (for both gunicorn and direct run) ──────────────────────────────────
+
+load_config()
+cors_origins = CONFIG.get('cors_origins', ['http://192.168.178.*'])
+CORS(app, origins=cors_origins)
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    load_config()
-    cors_origins = CONFIG.get('cors_origins', ['http://192.168.178.*'])
-    CORS(app, origins=cors_origins)
     host = CONFIG.get('host', '0.0.0.0')
     port = CONFIG.get('port', 8080)
     print(f"FileView starting on http://{host}:{port}")
     print(f"Allowed paths: {CONFIG.get('allowed_paths', [])}")
     print(f"CORS origins: {cors_origins}")
-    app.run(host=host, port=port, debug=False)
+    app.run(host=host, port=port, debug=False, threaded=True)

@@ -1,10 +1,32 @@
 # FileView
 
-A lightweight web-based file viewer for your LAN. Browse directories, view Markdown rendered as HTML, and read source code with syntax highlighting -- all from your browser.
+Browse your files, read Markdown beautifully rendered, and view source code with syntax highlighting -- all from your browser. No install needed on client machines, just open a URL.
 
-![FileView Screenshot](screenshot.png)
+![FileView](screenshot.png)
 
-## Quick Start
+## What it does
+
+FileView turns any Linux server into a web-based file browser. Point it at your directories and access them from any device on your network.
+
+- **Read Markdown** as nicely formatted pages, with tables, code blocks, and a table of contents
+- **View source code** with syntax highlighting for 30+ languages (Python, JavaScript, Rust, Go, and more)
+- **Preview images** with EXIF metadata (camera model, dimensions, date taken)
+- **Browse directories** with favorites, filtering, and sortable columns
+- **Dual-panel mode** for comparing or copying between two directories -- like a file manager
+
+![Dual-panel mode](screenshot-dual.png)
+
+## What makes it different
+
+- **No build step.** The entire frontend is a single HTML file. Drop it on a server and go.
+- **Dark and light theme.** Switch with one click. Your choice is remembered.
+- **Resizable everything.** Column widths, panel splits, favorites height -- drag to adjust, all saved automatically.
+- **Keyboard shortcuts.** `Ctrl+L` / `Ctrl+R` to jump to the path bar in either panel.
+- **Path conversion.** Paste a Windows path like `V:\Documents\report.md` and it just works (if configured).
+- **File operations.** Copy, move, rename, delete -- optional, disabled by default for safety.
+- **Secure by default.** Only serves files from directories you explicitly allow. No accidental exposure.
+
+## Getting started
 
 ```bash
 git clone https://github.com/stlas/fileview.git
@@ -23,23 +45,12 @@ python3 fileview.py
 
 Open `http://localhost:8080` in your browser.
 
-## Features
+For production use, run with [gunicorn](https://gunicorn.org/) instead of the built-in server:
 
-- **Markdown rendering** with tables, code blocks, syntax highlighting, and table of contents
-- **Source code viewer** with syntax highlighting for 30+ languages
-- **File browser** with directory navigation and resizable sidebar sections
-- **Column headers** with click-to-sort (Name, Date, Size) and sort direction indicators
-- **Resizable columns** -- drag column borders to adjust Date and Size widths
-- **Favorites** with resizable section height, saved in your browser (localStorage)
-- **Filter & Sort** files by name, date, or size via column headers
-- **Dual-panel mode** (Total Commander style) -- two full-width file panels with resizable split
-- **Image preview** with EXIF metadata display
-- **Optional file operations** -- copy, move, rename, delete (disabled by default)
-- **Path conversion** -- map Windows drive letters to Linux paths (e.g. `V:\` to `/srv/files/`)
-- **Persistent layout** -- all column widths, panel splits, and section heights saved in localStorage
-- **Dark theme** optimized for readability
-- **Single-file frontend** -- just `index.html`, no build step
-- **Path security** -- only serves files from configured allowed directories
+```bash
+pip install gunicorn
+gunicorn fileview:app -b 0.0.0.0:8080 -w 4
+```
 
 ## Configuration
 
@@ -60,23 +71,19 @@ All settings live in `config.json`:
 }
 ```
 
-### Options
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `title` | `FileView` | Name shown in the browser tab and header |
+| `allowed_paths` | `[]` | Which directories FileView is allowed to read |
+| `default_directory` | `/` | The directory shown when you first open FileView |
+| `features.file_operations` | `false` | Allow copy, move, rename, delete via right-click menu |
+| `features.favorites` | `true` | Show a favorites section (bookmarks saved in your browser) |
+| `features.path_conversion` | `null` | Map a path prefix to another (e.g. Windows drive to Linux path) |
+| `cors_origins` | `["http://192.168.178.*"]` | Which origins may access the API (for LAN use) |
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `host` | `0.0.0.0` | Bind address |
-| `port` | `8080` | HTTP port |
-| `title` | `FileView` | Browser title and header text |
-| `allowed_paths` | `[]` | Directories the server is allowed to read (security!) |
-| `default_directory` | `/` | Starting directory for the file browser |
-| `features.file_operations` | `false` | Enable copy/move/rename/delete |
-| `features.favorites` | `true` | Enable favorites (stored in browser localStorage) |
-| `features.path_conversion` | `null` | Optional path mapping (see below) |
-| `cors_origins` | `["http://192.168.178.*"]` | Allowed CORS origins (list of patterns) |
+### Path conversion example
 
-### Path Conversion
-
-Map a Windows drive letter (or any prefix) to a Linux path:
+If your users access files as `V:\` on Windows but the server stores them under `/srv/files/`:
 
 ```json
 "path_conversion": {
@@ -85,11 +92,11 @@ Map a Windows drive letter (or any prefix) to a Linux path:
 }
 ```
 
-Now users can paste `V:\Documents\report.md` in the path bar and it opens `/srv/files/Documents/report.md`.
+Now pasting `V:\Documents\report.md` in the path bar opens `/srv/files/Documents/report.md`.
 
-### File Operations
+### Enabling file operations
 
-Disabled by default for safety. Enable with:
+Disabled by default for safety. To enable copy, move, rename, and delete:
 
 ```json
 "features": {
@@ -97,25 +104,39 @@ Disabled by default for safety. Enable with:
 }
 ```
 
-This adds right-click context menus for:
-- **Rename** -- inline rename with extension preservation
-- **Copy** -- copy to a target path (use dual-panel mode for easy targeting)
-- **Move** -- move to a target path
-- **Delete** -- single files only, with confirmation dialog
+Right-click any file or folder to see the context menu. Both source and destination are checked against `allowed_paths`.
 
-All operations are validated against `allowed_paths` on both source and destination.
+---
 
-## Supported File Types
+## Technical Reference
 
-### Rendered
-- `.md` -- Markdown with full GitHub-style rendering
+### Requirements
 
-### Syntax Highlighted
+- Python 3.6+
+- Flask + flask-cors
+- markdown (Python package)
+- Pygments (syntax highlighting)
+
+```bash
+pip install flask flask-cors markdown pygments
+```
+
+Optional: [Pillow](https://pillow.readthedocs.io/) for image dimensions and EXIF data.
+
+### Supported file types
+
+**Rendered as formatted HTML:**
+`.md` (Markdown with GitHub-style rendering)
+
+**Syntax highlighted:**
 `.py` `.js` `.ts` `.tsx` `.jsx` `.sh` `.bash` `.json` `.yaml` `.yml` `.html` `.css` `.xml` `.sql` `.rs` `.go` `.java` `.c` `.cpp` `.h` `.rb` `.php` `.pl` `.lua` `.r` `.toml` `.ini` `.conf` `.env` `.diff` `.patch` `.bat` `.ps1` `.csv` `.log` `.txt` `.cfg` `.vim`
+
+**Image preview:**
+`.png` `.jpg` `.jpeg` `.gif` `.bmp` `.webp` `.svg` `.ico` `.tiff` `.tif`
 
 Files without an extension (e.g. `Makefile`, `LICENSE`, `Dockerfile`) are displayed as plain text.
 
-## API Endpoints
+### API endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -123,40 +144,25 @@ Files without an extension (e.g. `Makefile`, `LICENSE`, `Dockerfile`) are displa
 | GET | `/api/config` | Public configuration subset |
 | GET | `/api/view?file=PATH` | Render a file (Markdown or syntax-highlighted) |
 | GET | `/api/raw?file=PATH` | Raw file content as plain text |
-| GET | `/api/browse?dir=PATH` | List directory contents |
-| GET | `/api/check-path?path=PATH` | Check if path exists and its type |
-| GET | `/api/image?file=PATH` | Serve image file |
+| GET | `/api/browse?dir=PATH` | List directory contents as JSON |
+| GET | `/api/check-path?path=PATH` | Check if a path exists and its type |
+| GET | `/api/image?file=PATH` | Serve an image file |
 | GET | `/api/image/info?file=PATH` | Image metadata (dimensions, EXIF) |
 | POST | `/api/files/copy` | Copy file/directory (if enabled) |
 | POST | `/api/files/move` | Move file/directory (if enabled) |
 | POST | `/api/files/rename` | Rename file/directory (if enabled) |
 | DELETE | `/api/files/delete` | Delete a file (if enabled) |
 
-## Requirements
+### Security
 
-- **Python 3.6+**
-- **Flask** + flask-cors
-- **markdown** (Python package)
-- **Pygments** (for syntax highlighting via codehilite)
-
-Install all at once:
-
-```bash
-pip install flask flask-cors markdown pygments
-```
-
-## Security
-
-FileView enforces a path whitelist (`allowed_paths`). Every file and directory request is validated:
+FileView enforces a path whitelist (`allowed_paths`). Every request is validated:
 
 - Files outside `allowed_paths` return HTTP 403
-- Symlinks are resolved (`realpath`) before path checks -- no symlink escape
-- `/api/check-path` does not leak file existence outside allowed paths
+- Symlinks are resolved before path checks -- no symlink escape
 - Markdown HTML is sanitized (script, iframe, object, embed, event handlers stripped)
-- CORS origins are configurable (`cors_origins` in config.json, defaults to LAN)
 - File operations validate both source and destination
 - Directory traversal (`../`) is normalized and checked
-- File operations are disabled by default
+- CORS origins are configurable (defaults to LAN)
 - No authentication -- intended for trusted LAN environments
 
 **Do not expose FileView to the public internet without adding authentication.**

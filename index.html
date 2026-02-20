@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FileView</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" async></script>
     <style>
         :root {
             --bg-primary: #0d1117;
@@ -24,11 +26,30 @@
             --border-color: rgba(240, 246, 252, 0.1);
             --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
             /* Column & layout */
-            --col-date-w: 90px;
-            --col-size-w: 70px;
-            --col-date-w-r: 90px;
-            --col-size-w-r: 70px;
+            --col-date-w: 70px;
+            --col-size-w: 50px;
+            --col-date-w-r: 70px;
+            --col-size-w-r: 50px;
             --fav-height: 150px;
+            --fav-height-r: 150px;
+        }
+
+        html.light {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #e8ecf0;
+            --bg-code: #f0f3f6;
+            --text-primary: #24292f;
+            --text-secondary: #57606a;
+            --text-bright: #1f2328;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-purple: #8250df;
+            --accent-orange: #9a6700;
+            --accent-red: #cf222e;
+            --accent-yellow: #9a6700;
+            --border-color: rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -511,6 +532,38 @@
 
         .main-container.dual-panel .panel-right { display: flex; }
 
+        .panel-right .favorites-section { height: var(--fav-height-r); }
+
+        /* ── Sidebar Path Input ────────────────────────────────── */
+        .sidebar-path-bar {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.25rem;
+        }
+        .sidebar-path-input {
+            flex: 1;
+            padding: 0.2rem 0.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            min-width: 0;
+        }
+        .sidebar-path-input:focus { outline: none; border-color: var(--accent-blue); }
+        .sidebar-path-bar .go-btn {
+            padding: 0.2rem 0.4rem;
+            font-size: 0.7rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .sidebar-path-bar .go-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+
         /* ── Panel Resize Handle ──────────────────────────────── */
         .panel-resize-handle {
             display: none;
@@ -581,6 +634,40 @@
             width: 1px;
             background: var(--accent-blue);
         }
+
+        /* ── Path Popup ──────────────────────────────────────── */
+        .path-popup {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--accent-blue);
+            padding: 0.5rem;
+            box-shadow: var(--shadow-lg);
+        }
+        .path-popup.visible { display: flex; gap: 0.4rem; }
+        .path-popup input {
+            flex: 1;
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--accent-blue);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+        .path-popup input:focus { outline: none; }
+        .path-popup .popup-label {
+            font-size: 0.7rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -600,6 +687,8 @@
             <div class="header-actions">
                 <a class="btn" id="rawBtn" href="#" target="_blank" style="display: none;">Raw</a>
                 <button class="btn" id="dualPanelBtn" onclick="toggleDualPanel()">⧉ Dual</button>
+                <button class="btn" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme">🌙</button>
+                <a class="btn" href="https://github.com/stlas/fileview" target="_blank" title="GitHub Repository">GH</a>
             </div>
         </div>
     </header>
@@ -609,7 +698,10 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h3>📁 Browser</h3>
-                <div class="current-path" id="currentPath"></div>
+                <div class="sidebar-path-bar" id="pathBarLeft">
+                    <input type="text" class="sidebar-path-input" id="pathInputLeft" placeholder="Path..." onkeypress="if(event.key==='Enter') goToPathPanel('left')">
+                    <button class="go-btn" onclick="goToPathPanel('left')">Go</button>
+                </div>
                 <div class="sidebar-stats" id="sidebarStats"></div>
             </div>
 
@@ -658,11 +750,23 @@
         <aside class="sidebar panel-right" id="panelRight">
             <div class="sidebar-header">
                 <h3>📁 Target</h3>
-                <div class="current-path" id="currentPathRight"></div>
+                <div class="sidebar-path-bar" id="pathBarRight">
+                    <input type="text" class="sidebar-path-input" id="pathInputRight" placeholder="Path..." onkeypress="if(event.key==='Enter') goToPathPanel('right')">
+                    <button class="go-btn" onclick="goToPathPanel('right')">Go</button>
+                </div>
                 <div class="sidebar-stats" id="sidebarStatsRight"></div>
             </div>
+
+            <div class="favorites-section" id="favoritesSectionRight">
+                <div class="favorites-header">⭐ Favorites</div>
+                <div id="configFavsListRight"></div>
+                <div id="favoritesListRight"></div>
+            </div>
+            <div class="fav-resize-handle" id="favResizeHandleRight"></div>
+
             <div class="filter-bar">
                 <input type="text" class="filter-input" id="filterInputRight" placeholder="Filter..." oninput="applyFilterSortRight()">
+                <button class="sort-btn" onclick="promptNewRight()" title="New folder">+New</button>
             </div>
             <div class="column-headers" id="columnHeadersRight">
                 <span class="col-hdr"></span>
@@ -755,6 +859,23 @@
             document.getElementById('contextMenu').classList.remove('visible');
         });
 
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+L = toggle/focus left path bar
+            if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                togglePathBar('left');
+            }
+            // Ctrl+R = toggle/focus right path bar (dual mode only)
+            if (e.ctrlKey && e.key === 'r') {
+                const mc = document.getElementById('mainContainer');
+                if (mc.classList.contains('dual-panel')) {
+                    e.preventDefault();
+                    togglePathBar('right');
+                }
+            }
+        });
+
         // ── Favorites ──────────────────────────────────────────────
         function loadFavorites() {
             try {
@@ -771,12 +892,18 @@
         }
 
         function renderConfigFavs() {
-            const list = document.getElementById('configFavsList');
+            renderConfigFavsFor('configFavsList', false);
+            renderConfigFavsFor('configFavsListRight', true);
+        }
+
+        function renderConfigFavsFor(elementId, isRight) {
+            const list = document.getElementById(elementId);
+            if (!list) return;
             const paths = APP_CONFIG.favorite_paths || [];
             if (paths.length === 0) { list.innerHTML = ''; return; }
-
+            const fn = isRight ? 'browseDirRight' : 'browseDirectory';
             list.innerHTML = paths.map(fav =>
-                `<div class="fav-item" onclick="browseDirectory('${escapeAttr(fav.path)}')">
+                `<div class="fav-item" onclick="${fn}('${escapeAttr(fav.path)}')">
                     <span>${fav.icon || '📁'}</span>
                     <span class="fav-name" title="${escapeAttr(fav.path)}">${escapeHtml(fav.name)}</span>
                 </div>`
@@ -784,31 +911,37 @@
         }
 
         function renderFavorites() {
-            const section = document.getElementById('favoritesSection');
-            const list = document.getElementById('favoritesList');
+            renderFavoritesFor('favoritesSection', 'favoritesList', 'favResizeHandle', false);
+            renderFavoritesFor('favoritesSectionRight', 'favoritesListRight', 'favResizeHandleRight', true);
+        }
+
+        function renderFavoritesFor(sectionId, listId, handleId, isRight) {
+            const section = document.getElementById(sectionId);
+            const list = document.getElementById(listId);
+            if (!section || !list) return;
+            const handle = document.getElementById(handleId);
             const hasConfigFavs = (APP_CONFIG.favorite_paths || []).length > 0;
 
             if (favorites.length === 0 && !hasConfigFavs) {
                 section.style.display = 'none';
-                const rh = document.getElementById('favResizeHandle');
-                if (rh) rh.style.display = 'none';
+                if (handle) handle.style.display = 'none';
                 list.innerHTML = '';
                 return;
             }
 
             section.style.display = 'block';
-            const rh = document.getElementById('favResizeHandle');
-            if (rh) rh.style.display = '';
+            if (handle) handle.style.display = '';
 
             if (favorites.length === 0) {
                 list.innerHTML = '';
                 return;
             }
 
+            const navFn = isRight ? 'openFavoriteRight' : 'openFavorite';
             list.innerHTML = favorites.map((fav, i) => {
                 const isDir = fav.endsWith('/');
                 const name = fav.split('/').filter(Boolean).pop() || fav;
-                return `<div class="fav-item" onclick="openFavorite('${escapeHtml(fav)}')">
+                return `<div class="fav-item" onclick="${navFn}('${escapeHtml(fav)}')">
                     <span>${isDir ? '📁' : '📄'}</span>
                     <span class="fav-name" title="${escapeHtml(fav)}">${escapeHtml(name)}</span>
                     <span class="fav-remove" onclick="event.stopPropagation(); removeFavorite(${i})" title="Remove">✕</span>
@@ -997,7 +1130,8 @@
         async function browseDirectory(dir, fromLoadFile) {
             currentDir = dir;
             if (!fromLoadFile) currentFile = null;
-            document.getElementById('currentPath').textContent = dir;
+            const pil = document.getElementById('pathInputLeft');
+            if (pil) pil.value = dir;
             if (!currentFile) {
                 document.getElementById('pathInput').value = dir;
             }
@@ -1027,7 +1161,8 @@
 
         async function browseDirRight(dir) {
             currentDirRight = dir;
-            document.getElementById('currentPathRight').textContent = dir;
+            const pir = document.getElementById('pathInputRight');
+            if (pir) pir.value = dir;
 
             const fileList = document.getElementById('fileListRight');
             fileList.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
@@ -1085,7 +1220,7 @@
                         <span style="cursor:pointer;user-select:all" title="Klicken zum Kopieren" onclick="navigator.clipboard.writeText('${escapeHtml(fullPath)}')">📁 ${escapeHtml(fullPath)}</span>
                         <span>📏 ${(data.raw_length / 1024).toFixed(1)} KB</span>
                     </div>
-                    <div class="markdown-body">${typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(data.html) : escapeHtml(data.html)}</div>
+                    <div class="markdown-body">${typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(data.html) : data.html}</div>
                 `;
 
                 rawBtn.href = `${API_BASE}/raw?file=${encodeURIComponent(filepath)}`;
@@ -1432,15 +1567,89 @@
             setTimeout(() => el.remove(), 4000);
         }
 
+        // ── Panel Path Navigation ─────────────────────────────────
+        function goToPathPanel(side) {
+            const input = document.getElementById(side === 'left' ? 'pathInputLeft' : 'pathInputRight');
+            const path = input.value.trim();
+            if (!path) return;
+            if (side === 'left') {
+                browseDirectory(path);
+            } else {
+                browseDirRight(path);
+            }
+        }
+
+        function togglePathBar(side) {
+            const bar = document.getElementById(side === 'left' ? 'pathBarLeft' : 'pathBarRight');
+            const input = document.getElementById(side === 'left' ? 'pathInputLeft' : 'pathInputRight');
+            if (bar.style.display === 'none') {
+                bar.style.display = '';
+                input.focus();
+                input.select();
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
+        function openFavoriteRight(path) {
+            const pir = document.getElementById('pathInputRight');
+            if (pir) pir.value = path;
+            browseDirRight(path);
+        }
+
+        // ── New Folder (Right Panel) ─────────────────────────────
+        function promptNewRight() {
+            showModal('New Folder', `
+                <input type="text" id="modalInput" placeholder="Folder name...">
+                <div class="modal-actions">
+                    <button class="btn" onclick="closeModal()">Cancel</button>
+                    <button class="btn primary" onclick="doNewRight()">Create</button>
+                </div>
+            `);
+            setTimeout(() => document.getElementById('modalInput').focus(), 50);
+        }
+
+        async function doNewRight() {
+            const name = document.getElementById('modalInput').value.trim();
+            if (!name || !currentDirRight) return;
+
+            try {
+                const resp = await fetch(API_BASE + '/files/new-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ directory: currentDirRight, name }),
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                closeModal();
+                toast('Folder created', 'success');
+                browseDirRight(currentDirRight);
+            } catch (e) {
+                toast(e.message, 'error');
+            }
+        }
+
         // ── Layout Settings ───────────────────────────────────────
         function restoreLayoutSettings() {
             const favH = localStorage.getItem('fileview-fav-height');
             if (favH) document.documentElement.style.setProperty('--fav-height', favH + 'px');
+            const favHR = localStorage.getItem('fileview-fav-height-r');
+            if (favHR) document.documentElement.style.setProperty('--fav-height-r', favHR + 'px');
 
             ['--col-date-w', '--col-size-w', '--col-date-w-r', '--col-size-w-r'].forEach(v => {
                 const val = localStorage.getItem('fileview-' + v);
                 if (val) document.documentElement.style.setProperty(v, val + 'px');
             });
+
+            // Restore theme
+            const theme = localStorage.getItem('fileview-theme');
+            if (theme === 'light') {
+                document.documentElement.classList.add('light');
+                setTimeout(() => {
+                    const btn = document.getElementById('themeToggle');
+                    if (btn) btn.textContent = '☀️';
+                }, 0);
+            }
         }
 
         // ── Favorites Resize ──────────────────────────────────────
@@ -1476,6 +1685,47 @@
                 });
             });
         })();
+
+        // ── Favorites Resize (Right Panel) ──────────────────────
+        (function initFavResizeRight() {
+            document.addEventListener('DOMContentLoaded', () => {
+                const handle = document.getElementById('favResizeHandleRight');
+                if (!handle) return;
+                let startY, startH;
+
+                handle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const favSection = document.getElementById('favoritesSectionRight');
+                    startY = e.clientY;
+                    startH = favSection.offsetHeight;
+                    handle.classList.add('active');
+
+                    function onMove(ev) {
+                        const delta = ev.clientY - startY;
+                        const newH = Math.max(40, Math.min(window.innerHeight * 0.6, startH + delta));
+                        document.documentElement.style.setProperty('--fav-height-r', newH + 'px');
+                    }
+
+                    function onUp() {
+                        handle.classList.remove('active');
+                        const h = document.getElementById('favoritesSectionRight').offsetHeight;
+                        localStorage.setItem('fileview-fav-height-r', h);
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    }
+
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            });
+        })();
+
+        // ── Theme Toggle ─────────────────────────────────────────
+        function toggleTheme() {
+            const isLight = document.documentElement.classList.toggle('light');
+            document.getElementById('themeToggle').textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('fileview-theme', isLight ? 'light' : 'dark');
+        }
 
         // ── Panel Resize (Dual Mode) ─────────────────────────────
         (function initPanelResize() {
