@@ -668,6 +668,111 @@
             align-items: center;
             white-space: nowrap;
         }
+
+        /* ================== Print Styles ==================
+           Ctrl+P / Cmd+P or the Print button renders the current file
+           (Markdown, code, image) WITHOUT the surrounding UI chrome —
+           no header, sidebars, resize handles, or buttons. Forces a
+           readable light theme so dark-mode users don't print white
+           on black. Friendly page breaks inside headings/code/tables.
+        */
+        @media print {
+            /* Hide all UI */
+            .header, .sidebar, .panel-right,
+            .sidebar-resize-handle, .panel-resize-handle, .fav-resize-handle,
+            .welcome, .toolbar, .tabbar, .breadcrumb,
+            #pathInput, #logoLink, #sidebarToggle, #favToggle,
+            #rawBtn, #dualPanelBtn, #syntaxToggle, #themeToggle, #printBtn,
+            button, .btn {
+                display: none !important;
+            }
+            body, html {
+                background: white !important;
+                color: black !important;
+                font-family: Georgia, 'Times New Roman', serif;
+            }
+            .main-container {
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .content {
+                width: 100% !important;
+                max-width: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+            }
+            #content { padding: 0 !important; margin: 0 !important; }
+            .markdown-body {
+                max-width: none !important;
+                color: black !important;
+                font-size: 11pt;
+                line-height: 1.45;
+            }
+            .markdown-body h1, .markdown-body h2, .markdown-body h3,
+            .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+                color: black !important;
+                border-color: #888 !important;
+                page-break-after: avoid;
+            }
+            .markdown-body p, .markdown-body li,
+            .markdown-body td, .markdown-body th { color: black !important; }
+            .markdown-body a {
+                color: #0056b3 !important;
+                text-decoration: underline;
+            }
+            .markdown-body a[href]::after {
+                content: " (" attr(href) ")";
+                font-size: 0.85em;
+                color: #666 !important;
+            }
+            .markdown-body a[href^="#"]::after,
+            .markdown-body a[href*="javascript:"]::after { content: ""; }
+            .markdown-body code {
+                background: #f0f0f0 !important;
+                color: #c7254e !important;
+                border: 1px solid #ddd;
+                padding: 0.1em 0.3em;
+            }
+            .markdown-body pre {
+                background: #f6f8fa !important;
+                border: 1px solid #ddd !important;
+                color: black !important;
+                page-break-inside: avoid;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            .markdown-body pre code {
+                background: none !important;
+                color: black !important;
+                border: none;
+                padding: 0;
+            }
+            .markdown-body blockquote {
+                background: #f9f9f9 !important;
+                border-left: 4px solid #888 !important;
+                color: #333 !important;
+                page-break-inside: avoid;
+            }
+            .markdown-body table {
+                border-collapse: collapse;
+                page-break-inside: avoid;
+            }
+            .markdown-body th, .markdown-body td {
+                border: 1px solid #888 !important;
+                padding: 0.4em 0.6em;
+            }
+            .markdown-body th { background: #eee !important; font-weight: bold; }
+            .markdown-body img { max-width: 100% !important; page-break-inside: avoid; }
+            .source-view, pre.source, .hljs, code.hljs {
+                background: #f6f8fa !important;
+                color: black !important;
+                font-size: 9pt;
+            }
+            .source-view .line-number { color: #999 !important; }
+            @page { margin: 1.8cm 1.5cm; size: A4; }
+        }
     </style>
 </head>
 <body>
@@ -686,6 +791,7 @@
             </div>
             <div class="header-actions">
                 <a class="btn" id="rawBtn" href="#" target="_blank" style="display: none;">Raw</a>
+                <button class="btn" id="printBtn" onclick="printCurrentFile()" title="Print rendered view without UI chrome">🖨️ Print</button>
                 <button class="btn" id="dualPanelBtn" onclick="toggleDualPanel()">⧉ Dual</button>
                 <button class="btn" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme">🌙</button>
                 <a class="btn" href="https://github.com/stlas/fileview" target="_blank" title="GitHub Repository">GH</a>
@@ -1312,6 +1418,23 @@
         }
 
         // ── Dual Panel ─────────────────────────────────────────────
+        // ── Print ─────────────────────────────────────────────────
+        // Explicit print entry. Relies on @media print CSS to hide UI.
+        // Temporarily flips to light theme so dark-mode users don't end
+        // up with CSS-var colors that rely on dark background.
+        function printCurrentFile() {
+            const savedTheme = document.documentElement.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', 'light');
+            setTimeout(() => {
+                window.print();
+                if (savedTheme) {
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+            }, 50);
+        }
+
         function toggleDualPanel() {
             const mc = document.getElementById('mainContainer');
             const btn = document.getElementById('dualPanelBtn');
