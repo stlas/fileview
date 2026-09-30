@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FileView">
+  <!-- Full-bleed for launchers that crop (Android maskable, iOS home screen).
+       Content scaled into the central safe zone. -->
+  <rect width="64" height="64" fill="#161b22"/>
+  <g transform="translate(6.4 6.4) scale(0.8)">
+    <path d="M20 11H38L48 21V49A4 4 0 0 1 44 53H20A4 4 0 0 1 16 49V15A4 4 0 0 1 20 11Z" fill="#f0f6fc"/>
+    <path d="M38 11V17A4 4 0 0 0 42 21H48Z" fill="#8b949e"/>
+    <rect x="21" y="25" width="18" height="4.5" rx="2.25" fill="#58a6ff"/>
+    <rect x="21" y="33" width="21" height="3" rx="1.5" fill="#8b949e"/>
+    <rect x="21" y="39" width="12" height="3" rx="1.5" fill="#8b949e"/>
+    <circle cx="45" cy="46" r="10.5" fill="#161b22"/>
+    <circle cx="45" cy="46" r="8" fill="#58a6ff"/>
+    <circle cx="45" cy="46" r="3.4" fill="#0d1117"/>
+    <circle cx="46.6" cy="44.4" r="1.2" fill="#f0f6fc"/>
+  </g>
+</svg>
