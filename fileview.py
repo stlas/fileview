@@ -136,6 +136,131 @@ ICON_MAP = {
     '.ts': '📜', '.tsx': '📜', '.jsx': '📜',
 }
 
+# ── Erweiterungen aus extensions.d/ ─────────────────────────────────────────
+#
+# WOZU (Stefan, ueber MICK am 2026-08-19):
+#   Neue Dateitypen sollen per YAML ergaenzbar sein, ohne fileview.py
+#   anzufassen und ohne ein Update auszurollen. MICKs Anlass war der
+#   WezTerm-Linkifier: Er reicht Pfade an FileView weiter, und was hier nicht
+#   in der Liste steht, laesst sich nicht anzeigen.
+#
+#   highlight.js im Frontend kann ohnehin 190+ Sprachen — es fehlt nur die
+#   Zuordnung Endung -> Sprache. Der Aufwand liegt also nicht im Koennen,
+#   sondern in einer Tabelle, die bisher nur ich pflegen konnte.
+#
+# FORM (wie von MICK skizziert, uebernommen):
+#   extensions.d/rust-oekosystem.yaml
+#     extensions:
+#       .rst:  { lang: rst,       icon: 📖 }
+#       .kt:   { lang: kotlin,    icon: 🎯 }
+#
+# GRUNDSAETZE, an denen mir mehr liegt als an der Bequemlichkeit:
+#
+#   * EINE KAPUTTE DATEI DARF DEN DIENST NICHT MITNEHMEN. Sie wird
+#     uebersprungen und gemeldet. Wer eine Endung ergaenzt, soll nicht den
+#     Betrachter fuer alle lahmlegen koennen.
+#   * UEBERSCHREIBEN WIRD GEMELDET. Wer eine eingebaute Endung neu belegt, darf
+#     das — aber es steht im Log. Eine stille Aenderung an einem Standard ist
+#     die Sorte Fehler, die niemand mehr findet.
+#   * NORMALISIERT WIRD HIER, NICHT BEIM NUTZER. "rst", ".RST" und ".rst"
+#     meinen dasselbe. Eine Schnittstelle, die an einem fehlenden Punkt
+#     scheitert und dazu schweigt, ist keine.
+#   * FEHLT DAS VERZEICHNIS, ist das kein Fehler, sondern der Normalfall.
+
+EXTENSIONS_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'extensions.d')
+
+#: Was aus Plugins kam — fuer /api/config, damit man ohne Log-Lesen sieht,
+#: ob eine Ergaenzung angekommen ist.
+PLUGIN_INFO = {'geladen': [], 'endungen': [], 'fehler': [], 'ueberschrieben': []}
+
+
+def _normalisiere_endung(rohe_endung):
+    """"rst", ".RST", " .rst " -> ".rst". Gibt None bei Unbrauchbarem."""
+    e = str(rohe_endung).strip().lower()
+    if not e:
+        return None
+    if not e.startswith('.'):
+        e = '.' + e
+    # Ein Punkt allein oder Pfadtrenner sind keine Endung.
+    if e == '.' or '/' in e or '\\' in e:
+        return None
+    return e
+
+
+def load_extension_plugins():
+    """extensions.d/*.yaml in die eingebauten Tabellen mischen."""
+    if not os.path.isdir(EXTENSIONS_DIR):
+        return
+
+    try:
+        import yaml
+    except ImportError:
+        PLUGIN_INFO['fehler'].append(
+            'PyYAML fehlt — extensions.d/ wird ignoriert. Abhilfe: pip install pyyaml')
+        print(f"WARNUNG: {PLUGIN_INFO['fehler'][-1]}", file=sys.stderr)
+        return
+
+    # Sortiert, damit die Reihenfolge vorhersagbar ist: Bei zwei Dateien, die
+    # dieselbe Endung belegen, gewinnt die alphabetisch spaetere — und das ist
+    # nachvollziehbar, statt von der Verzeichnisreihenfolge abzuhaengen.
+    for name in sorted(os.listdir(EXTENSIONS_DIR)):
+        if not name.endswith(('.yaml', '.yml')):
+            continue
+        pfad = os.path.join(EXTENSIONS_DIR, name)
+        try:
+            with open(pfad, 'r', encoding='utf-8') as f:
+                daten = yaml.safe_load(f) or {}
+        except Exception as e:
+            PLUGIN_INFO['fehler'].append(f'{name}: {e}')
+            print(f"WARNUNG: extensions.d/{name} uebersprungen: {e}", file=sys.stderr)
+            continue
+
+        eintraege = (daten or {}).get('extensions')
+        if not isinstance(eintraege, dict):
+            PLUGIN_INFO['fehler'].append(
+                f"{name}: erwartet wird ein Abschnitt 'extensions:' mit Endungen darunter")
+            print(f"WARNUNG: extensions.d/{name}: kein 'extensions:'-Abschnitt",
+                  file=sys.stderr)
+            continue
+
+        for rohe_endung, angaben in eintraege.items():
+            endung = _normalisiere_endung(rohe_endung)
+            if endung is None:
+                PLUGIN_INFO['fehler'].append(f'{name}: unbrauchbare Endung {rohe_endung!r}')
+                continue
+            if not isinstance(angaben, dict):
+                angaben = {}
+
+            war_eingebaut = endung in VIEWABLE_EXTENSIONS
+            if endung not in VIEWABLE_EXTENSIONS:
+                VIEWABLE_EXTENSIONS.append(endung)
+
+            lang = angaben.get('lang')
+            if lang:
+                if war_eingebaut and LANG_MAP.get(endung) not in (None, lang):
+                    PLUGIN_INFO['ueberschrieben'].append(
+                        f'{endung}: lang {LANG_MAP[endung]} -> {lang} (aus {name})')
+                LANG_MAP[endung] = str(lang)
+
+            icon = angaben.get('icon')
+            if icon:
+                if war_eingebaut and ICON_MAP.get(endung) not in (None, icon):
+                    PLUGIN_INFO['ueberschrieben'].append(
+                        f'{endung}: icon {ICON_MAP[endung]} -> {icon} (aus {name})')
+                ICON_MAP[endung] = str(icon)
+
+            PLUGIN_INFO['endungen'].append(endung)
+
+        PLUGIN_INFO['geladen'].append(name)
+
+    if PLUGIN_INFO['geladen']:
+        print(f"extensions.d: {len(PLUGIN_INFO['geladen'])} Datei(en), "
+              f"{len(PLUGIN_INFO['endungen'])} Endung(en) ergaenzt: "
+              f"{', '.join(PLUGIN_INFO['endungen'])}")
+    for u in PLUGIN_INFO['ueberschrieben']:
+        print(f"extensions.d: eingebaute Zuordnung ueberschrieben — {u}")
+
 # ── API: Serve Frontend ─────────────────────────────────────────────────────
 
 @app.route('/')
@@ -153,6 +278,14 @@ def get_config():
         'allowed_paths': CONFIG.get('allowed_paths', []),
         'features': CONFIG.get('features', {}),
         'favorite_paths': CONFIG.get('favorite_paths', []),
+        # Stefan/MICK 19.08.: sichtbar machen, was aus extensions.d/ kam.
+        # Ohne das muesste man Logs lesen, um zu erfahren, ob eine ergaenzte
+        # Endung angekommen ist — und Logs liest niemand, wenn etwas
+        # scheinbar funktioniert.
+        'extensions': {
+            'gesamt': sorted(VIEWABLE_EXTENSIONS),
+            'aus_plugins': PLUGIN_INFO,
+        },
     })
 
 # ── API: View File ───────────────────────────────────────────────────────────
@@ -618,6 +751,7 @@ def file_new_folder():
 # ── Init (for both gunicorn and direct run) ──────────────────────────────────
 
 load_config()
+load_extension_plugins()
 cors_origins = CONFIG.get('cors_origins', ['http://192.168.178.*'])
 CORS(app, origins=cors_origins)
 
