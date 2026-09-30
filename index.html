@@ -773,6 +773,82 @@
             .source-view .line-number { color: #999 !important; }
             @page { margin: 1.8cm 1.5cm; size: A4; }
         }
+
+        /* ── Mobile ──────────────────────────────────────────────────
+           The older rule above (@media 900px: .sidebar display:none) sits
+           BEFORE the base rule .sidebar{display:flex} and therefore lost -
+           on phones the whole sidebar was stacked above the document.
+           This block comes last so it wins. Desktop layout is unchanged. */
+        .mobile-browser-toggle, .more-btn { display: none; }
+
+        @media (max-width: 900px) {
+            .header { padding: 0.5rem 0.75rem; }
+            .header-content { flex-wrap: nowrap; gap: 0.5rem; position: relative; }
+            #appTitle { display: none; }
+            .path-input-container { min-width: 0; max-width: none; gap: 0.25rem; }
+            /* 16px verhindert das automatische Hineinzoomen auf dem iPhone */
+            .path-input { font-size: 16px; min-height: 40px; min-width: 0; }
+            /* "Open" entfaellt: Enter bzw. "Los" auf der Handytastatur reicht */
+            .path-input-container .btn.primary { display: none; }
+
+            .more-btn { display: flex; justify-content: center; min-width: 40px; min-height: 40px; font-size: 1.1rem; }
+            .header-actions {
+                display: none;
+                position: absolute; right: 0; top: calc(100% + 0.5rem);
+                flex-direction: column; min-width: 170px;
+                padding: 0.4rem; gap: 0.3rem;
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-color); border-radius: 8px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            }
+            .header-actions.open { display: flex; }
+            .header-actions .btn { min-height: 40px; }
+            /* Zwei Spalten passen nicht auf ein Handy */
+            #dualPanelBtn { display: none; }
+            .main-container.dual-panel .content { display: block; }
+            .main-container.dual-panel .panel-right,
+            .main-container.dual-panel .panel-resize-handle { display: none; }
+
+            .main-container { display: flex; flex-direction: column; height: auto; }
+
+            /* Ordner & Favoriten: standardmaessig ZU, eine Leiste zum Aufklappen */
+            .mobile-browser-toggle {
+                display: flex; align-items: center; gap: 0.5rem;
+                width: 100%; min-height: 44px; padding: 0.5rem 0.75rem;
+                background: var(--bg-secondary); color: var(--text-primary);
+                border: 0; border-bottom: 1px solid var(--border-color);
+                font: inherit; font-size: 0.9rem; text-align: left; cursor: pointer;
+            }
+            .mobile-browser-toggle .mbt-pfad {
+                flex: 1; min-width: 0; color: var(--text-secondary); font-size: 0.8rem;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: right;
+            }
+            .mobile-browser-toggle .mbt-pfeil { transition: transform 0.2s; }
+            .main-container.show-sidebar .mobile-browser-toggle .mbt-pfeil { transform: rotate(90deg); }
+            .sidebar { display: none; border-right: 0; border-bottom: 1px solid var(--border-color); }
+            #panelRight { display: none; }
+            .main-container.show-sidebar #sidebar { display: flex; }
+            .sidebar .file-list { max-height: 55vh; }
+            .fav-resize-handle { display: none; }
+
+            /* Dateiliste: Groesse weg, Name + Datum, 40px treffbar */
+            .file-item, .column-headers { grid-template-columns: 24px 1fr var(--col-date-w); }
+            .file-item { min-height: 40px; font-size: 0.9rem; }
+            .file-item .size, .column-headers [data-sort-col="size"] { display: none; }
+            .col-resize { display: none; }
+
+            /* Dokument: lesbar, nichts laeuft seitlich raus */
+            .content { padding: 1rem; min-width: 0; }
+            .file-meta { flex-wrap: wrap; overflow-wrap: anywhere; }
+            .markdown-body h1 { font-size: clamp(1.4rem, 6vw, 2rem); line-height: 1.25; }
+            .markdown-body h2 { font-size: 1.3rem; line-height: 1.3; }
+            .markdown-body h3 { font-size: 1.1rem; }
+            .markdown-body ul, .markdown-body ol { padding-left: 1.25rem; }
+            .markdown-body table { display: block; width: auto; max-width: 100%; overflow-x: auto; }
+            .markdown-body th, .markdown-body td { padding: 0.5rem 0.6rem; }
+            .markdown-body pre { max-width: 100%; }
+            .markdown-body p, .markdown-body li { overflow-wrap: anywhere; }
+        }
     </style>
 </head>
 <body>
@@ -784,12 +860,14 @@
             </a>
             <div class="path-input-container">
                 <input type="text" class="path-input" id="pathInput"
-                       placeholder="Enter file or directory path..."
+                       placeholder="Enter file or directory path..." enterkeyhint="go"
                        onkeypress="if(event.key==='Enter') goToPath()">
                 <button class="btn fav-btn" id="favToggle" onclick="toggleFavorite()" title="Toggle favorite">☆</button>
                 <button class="btn primary" onclick="goToPath()">Open</button>
             </div>
-            <div class="header-actions">
+            <button class="btn more-btn" id="moreBtn" type="button" onclick="toggleMore()"
+                    aria-expanded="false" aria-controls="headerActions" title="More">⋯</button>
+            <div class="header-actions" id="headerActions">
                 <a class="btn" id="rawBtn" href="#" target="_blank" style="display: none;">Raw</a>
                 <button class="btn" id="printBtn" onclick="printCurrentFile()" title="Print rendered view without UI chrome">🖨️ Print</button>
                 <button class="btn" id="dualPanelBtn" onclick="toggleDualPanel()">⧉ Dual</button>
@@ -800,6 +878,13 @@
     </header>
 
     <div class="main-container" id="mainContainer">
+        <!-- Mobile only: folders & favorites collapsed by default -->
+        <button class="mobile-browser-toggle" id="mobileBrowserToggle" type="button"
+                onclick="toggleMobileSidebar()" aria-expanded="false" aria-controls="sidebar">
+            <span>📁 Folders &amp; Favorites</span>
+            <span class="mbt-pfad" id="mbtPath"></span>
+            <span class="mbt-pfeil" aria-hidden="true">›</span>
+        </button>
         <!-- Left Sidebar: File Browser -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -1238,6 +1323,10 @@
             if (!fromLoadFile) currentFile = null;
             const pil = document.getElementById('pathInputLeft');
             if (pil) pil.value = dir;
+            // Mobile toggle shows where the browser currently is
+            const mbt = document.getElementById('mbtPath');
+            // LRM marks keep the slashes in place inside the rtl-truncated span
+            if (mbt) mbt.textContent = '‎' + dir + '‎';
             if (!currentFile) {
                 document.getElementById('pathInput').value = dir;
             }
@@ -1306,6 +1395,7 @@
             currentFile = filepath;
             document.getElementById('pathInput').value = filepath;
             updateFavButton();
+            mobileAfterOpen();
 
             // Image files get special treatment
             if (isImageFile(filepath)) {
@@ -1433,6 +1523,43 @@
                     document.documentElement.removeAttribute('data-theme');
                 }
             }, 50);
+        }
+
+        // ── Mobile: folders & favorites collapsed by default, "⋯" menu ──
+        // State is NOT remembered on purpose: collapsed after every load.
+        const MOBILE_MQ = window.matchMedia('(max-width: 900px)');
+
+        function toggleMobileSidebar(force) {
+            const mc = document.getElementById('mainContainer');
+            const open = typeof force === 'boolean' ? force : !mc.classList.contains('show-sidebar');
+            mc.classList.toggle('show-sidebar', open);
+            document.getElementById('mobileBrowserToggle').setAttribute('aria-expanded', String(open));
+        }
+
+        function toggleMore(force) {
+            const menu = document.getElementById('headerActions');
+            const open = typeof force === 'boolean' ? force : !menu.classList.contains('open');
+            menu.classList.toggle('open', open);
+            document.getElementById('moreBtn').setAttribute('aria-expanded', String(open));
+        }
+
+        // Close the "⋯" menu on outside tap, after choosing an entry, and on Escape
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('headerActions');
+            if (!menu || !menu.classList.contains('open')) return;
+            if (e.target.closest('#moreBtn')) return;
+            if (!e.target.closest('#headerActions') || e.target.closest('.btn')) toggleMore(false);
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMore(false); });
+
+        // After opening a file on a phone: fold the browser away, start at the top
+        function mobileAfterOpen() {
+            if (!MOBILE_MQ.matches) return;
+            toggleMobileSidebar(false);
+            window.scrollTo(0, 0);
+            // Show the END of the path (the file name), not the always-same start
+            const pi = document.getElementById('pathInput');
+            requestAnimationFrame(() => { pi.scrollLeft = pi.scrollWidth; });
         }
 
         function toggleDualPanel() {
