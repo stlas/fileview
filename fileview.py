@@ -267,6 +267,14 @@ def load_extension_plugins():
 def serve_index():
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
 
+
+# App-Icons + Webmanifest (SANDY, PR #2). send_from_directory verhindert
+# Pfad-Ausbrueche (../) selbst und antwortet dann mit 404.
+@app.route('/icons/<path:name>')
+def serve_icons(name):
+    return send_from_directory(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons'), name)
+
 # ── API: Config ──────────────────────────────────────────────────────────────
 
 @app.route('/api/config')
