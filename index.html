@@ -855,11 +855,92 @@
             .markdown-body pre { max-width: 100%; }
             .markdown-body p, .markdown-body li { overflow-wrap: anywhere; }
         }
+
+        /* ── Reading comfort ─────────────────────────────────────────
+           Reading width centered (was left-aligned with the rest empty),
+           optional full width, adjustable font and size. Defaults render
+           exactly as before: 16px Inter, 900px, headings 2/1.5/1.25 em
+           (= the old rem values, since the text base is the root size). */
+        :root {
+            --read-width: 900px;
+            --read-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --read-size: 16px;
+        }
+        :root.full-width { --read-width: none; }
+        .content { container-type: inline-size; }
+        .markdown-body {
+            max-width: var(--read-width);
+            margin-inline: auto;
+            font-family: var(--read-font);
+            font-size: var(--read-size);
+        }
+        #content > .file-meta { max-width: var(--read-width); margin-inline: auto; }
+        .markdown-body h1 { font-size: 2em; }
+        .markdown-body h2 { font-size: 1.5em; }
+        .markdown-body h3 { font-size: 1.25em; }
+
+        /* Wide tables and code may leave the reading column (desktop only),
+           centered on it, never wider than the content area. */
+        @media (min-width: 901px) {
+            :root:not(.full-width) .markdown-body table,
+            :root:not(.full-width) .markdown-body pre {
+                display: block;
+                width: max-content;
+                min-width: 100%;
+                /* cap: text-heavy tables otherwise stretch every row into one line */
+                max-width: min(calc(100cqw - 4rem), 1400px);
+                overflow-x: auto;
+                position: relative;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            /* Browser column: collapsed while a file is open (desktop).
+               Dual mode needs it, so it never collapses there. */
+            .main-container.sidebar-closed:not(.dual-panel) { grid-template-columns: 1fr; }
+            .main-container.sidebar-closed:not(.dual-panel) #sidebar { display: none; }
+            .sidebar-toggle.is-open { color: var(--accent-blue); border-color: var(--accent-blue); }
+        }
+        @media (max-width: 900px) {
+            .sidebar-toggle { display: none; }   /* phones use the folders bar */
+            #widthBtn { display: none; }         /* phones are always full width */
+            /* keep the smaller phone headings, now relative to the chosen size */
+            .markdown-body h1 { font-size: clamp(1.4em, 6vw, 2em); }
+            .markdown-body h2 { font-size: 1.3em; }
+            .markdown-body h3 { font-size: 1.1em; }
+        }
+
+        /* Copy path button next to the path field */
+        .copy-btn { padding: 0.2rem 0.45rem; font-size: 1rem; }
+        .copy-btn.done { color: var(--accent-green); border-color: var(--accent-green); }
+
+        /* Reading settings popover ("Aa") */
+        .read-panel {
+            display: none;
+            position: absolute; right: 1rem; top: calc(100% + 0.4rem);
+            width: 260px; padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color); border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            z-index: 101;
+        }
+        .read-panel.open { display: block; }
+        .read-panel .rp-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 0.35rem; }
+        .read-panel .rp-row { display: flex; gap: 0.35rem; margin-bottom: 0.75rem; }
+        .read-panel .rp-row .btn { flex: 1; justify-content: center; min-height: 36px; }
+        .read-panel .rp-row .btn.active { background: var(--bg-tertiary); }
+        .read-panel .rp-size { flex: 1; text-align: center; align-self: center; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+        .read-panel .rp-reset { width: 100%; justify-content: center; }
+        @media (max-width: 900px) {
+            .read-panel { right: 0.5rem; left: 0.5rem; width: auto; }
+        }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="header-content">
+            <button class="btn sidebar-toggle" id="sidebarToggle" type="button" onclick="toggleBrowser()"
+                    title="Show/hide folders (B)" aria-expanded="true" aria-controls="sidebar">📁</button>
             <a href="?" class="logo" id="logoLink">
                 <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' role='img' aria-label='FileView'%3E%3Crect x='2' y='2' width='60' height='60' rx='14' fill='%23161b22'/%3E%3Crect x='2.75' y='2.75' width='58.5' height='58.5' rx='13.25' fill='none' stroke='%23f0f6fc' stroke-opacity='.14' stroke-width='1.5'/%3E%3Cpath d='M20 11H38L48 21V49A4 4 0 0 1 44 53H20A4 4 0 0 1 16 49V15A4 4 0 0 1 20 11Z' fill='%23f0f6fc'/%3E%3Cpath d='M38 11V17A4 4 0 0 0 42 21H48Z' fill='%238b949e'/%3E%3Crect x='21' y='25' width='18' height='4.5' rx='2.25' fill='%2358a6ff'/%3E%3Crect x='21' y='33' width='21' height='3' rx='1.5' fill='%238b949e'/%3E%3Crect x='21' y='39' width='12' height='3' rx='1.5' fill='%238b949e'/%3E%3Ccircle cx='45' cy='46' r='10.5' fill='%23161b22'/%3E%3Ccircle cx='45' cy='46' r='8' fill='%2358a6ff'/%3E%3Ccircle cx='45' cy='46' r='3.4' fill='%230d1117'/%3E%3Ccircle cx='46.6' cy='44.4' r='1.2' fill='%23f0f6fc'/%3E%3C/svg%3E" alt="" width="22" height="22" style="display:block">
                 <span id="appTitle">FileView</span>
@@ -868,6 +949,8 @@
                 <input type="text" class="path-input" id="pathInput"
                        placeholder="Enter file or directory path..." enterkeyhint="go"
                        onkeypress="if(event.key==='Enter') goToPath()">
+                <button class="btn copy-btn" id="copyPathBtn" type="button" onclick="copyCurrentPath()"
+                        title="Copy path to clipboard">📋</button>
                 <button class="btn fav-btn" id="favToggle" onclick="toggleFavorite()" title="Toggle favorite">☆</button>
                 <button class="btn primary" onclick="goToPath()">Open</button>
             </div>
@@ -875,11 +958,33 @@
                     aria-expanded="false" aria-controls="headerActions" title="More">⋯</button>
             <div class="header-actions" id="headerActions">
                 <a class="btn" id="rawBtn" href="#" target="_blank" style="display: none;">Raw</a>
+                <button class="btn" id="copyLinkBtn" type="button" onclick="copyCurrentLink()"
+                        title="Copy a FileView link to what is open">🔗 Link</button>
+                <button class="btn" id="readBtn" type="button" onclick="toggleReadPanel()"
+                        title="Font and text size" aria-expanded="false" aria-controls="readPanel">Aa</button>
+                <button class="btn" id="widthBtn" type="button" onclick="toggleFullWidth()"
+                        title="Reading width / full width" aria-pressed="false">↔</button>
                 <button class="btn" id="printBtn" onclick="printCurrentFile()" title="Print rendered view without UI chrome">🖨️ Print</button>
                 <button class="btn" id="dualPanelBtn" onclick="toggleDualPanel()">⧉ Dual</button>
                 <button class="btn" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark theme">🌙</button>
                 <a class="btn" href="https://github.com/stlas/fileview" target="_blank" title="GitHub Repository">GH</a>
             </div>
+        </div>
+        <!-- Reading settings -->
+        <div class="read-panel" id="readPanel" role="dialog" aria-label="Font and text size">
+            <div class="rp-label">Font</div>
+            <div class="rp-row" id="rpFonts">
+                <button class="btn" type="button" data-font="sans" onclick="setReadFont('sans')">Sans</button>
+                <button class="btn" type="button" data-font="serif" onclick="setReadFont('serif')" style="font-family: Georgia, serif">Serif</button>
+                <button class="btn" type="button" data-font="mono" onclick="setReadFont('mono')" style="font-family: 'JetBrains Mono', monospace">Mono</button>
+            </div>
+            <div class="rp-label">Size</div>
+            <div class="rp-row">
+                <button class="btn" type="button" onclick="stepReadSize(-1)" aria-label="Smaller text">A−</button>
+                <span class="rp-size" id="rpSize">16 px</span>
+                <button class="btn" type="button" onclick="stepReadSize(1)" aria-label="Larger text">A+</button>
+            </div>
+            <button class="btn rp-reset" type="button" onclick="resetReadSettings()">Reset</button>
         </div>
     </header>
 
@@ -1327,6 +1432,8 @@
         async function browseDirectory(dir, fromLoadFile) {
             currentDir = dir;
             if (!fromLoadFile) currentFile = null;
+            // Browsing a folder (not the folder of a just-opened file): show the column
+            if (!fromLoadFile) setBrowserOpen(true);
             const pil = document.getElementById('pathInputLeft');
             if (pil) pil.value = dir;
             // Mobile toggle shows where the browser currently is
@@ -1401,7 +1508,7 @@
             currentFile = filepath;
             document.getElementById('pathInput').value = filepath;
             updateFavButton();
-            mobileAfterOpen();
+            afterFileOpen();
 
             // Image files get special treatment
             if (isImageFile(filepath)) {
@@ -1419,7 +1526,7 @@
                 const fullPath = data.directory.endsWith('/') ? data.directory + data.filename : data.directory + '/' + data.filename;
                 content.innerHTML = `
                     <div class="file-meta">
-                        <span style="cursor:pointer;user-select:all" title="Klicken zum Kopieren" onclick="navigator.clipboard.writeText('${escapeHtml(fullPath)}')">📁 ${escapeHtml(fullPath)}</span>
+                        <span style="cursor:pointer;user-select:all" title="Click to copy the path" data-copy="${escapeAttr(fullPath)}" onclick="copyWithFeedback(this.dataset.copy, 'Path')">📁 ${escapeHtml(fullPath)}</span>
                         <span>📏 ${(data.raw_length / 1024).toFixed(1)} KB</span>
                     </div>
                     <div class="markdown-body">${typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(data.html) : data.html}</div>
@@ -1558,10 +1665,118 @@
         });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleMore(false); });
 
-        // After opening a file on a phone: fold the browser away, start at the top
-        function mobileAfterOpen() {
+        // ── Browser column: collapsed while a file is open, open for folders ──
+        // Desktop: .sidebar-closed on the grid. Phones: .show-sidebar (see above).
+        function browserIsOpen() {
+            const mc = document.getElementById('mainContainer');
+            return MOBILE_MQ.matches ? mc.classList.contains('show-sidebar')
+                                     : !mc.classList.contains('sidebar-closed');
+        }
+        function setBrowserOpen(open) {
+            if (MOBILE_MQ.matches) toggleMobileSidebar(open);
+            else document.getElementById('mainContainer').classList.toggle('sidebar-closed', !open);
+            const t = document.getElementById('sidebarToggle');
+            if (t) { t.setAttribute('aria-expanded', String(open)); t.classList.toggle('is-open', open); }
+        }
+        function toggleBrowser() { setBrowserOpen(!browserIsOpen()); }
+
+        // "B" toggles the browser column (not while typing)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'b' || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+            toggleBrowser();
+        });
+
+        // ── Copy path / link (works on plain http too) ──────────────
+        async function copyText(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                }
+            } catch (e) { /* fall through to the legacy path */ }
+            // navigator.clipboard only exists on https/localhost; FileView usually
+            // runs on plain http in a LAN, where it is undefined.
+            const t = document.createElement('textarea');
+            t.value = text; t.setAttribute('readonly', '');
+            t.style.position = 'fixed'; t.style.opacity = '0';
+            document.body.appendChild(t); t.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            t.remove();
+            return ok;
+        }
+        async function copyWithFeedback(text, what, btn) {
+            const ok = await copyText(text);
+            toast(ok ? `${what} copied` : `Could not copy ${what.toLowerCase()}`, ok ? 'success' : 'error');
+            if (btn && ok) {
+                btn.dataset.label = btn.dataset.label || btn.textContent;
+                btn.textContent = '✓'; btn.classList.add('done');
+                clearTimeout(btn._t);
+                btn._t = setTimeout(() => { btn.textContent = btn.dataset.label; btn.classList.remove('done'); }, 1500);
+            }
+            return ok;
+        }
+        function copyCurrentPath() {
+            const p = currentFile || currentDir || document.getElementById('pathInput').value.trim();
+            if (p) copyWithFeedback(p, 'Path', document.getElementById('copyPathBtn'));
+        }
+        function copyCurrentLink() { copyWithFeedback(window.location.href, 'Link', document.getElementById('copyLinkBtn')); }
+
+        // ── Reading settings: font, size, full width (remembered per device) ──
+        const READ_FONTS = {
+            sans: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            serif: "'Iowan Old Style', Charter, Georgia, 'Times New Roman', serif",
+            mono: "'JetBrains Mono', monospace"
+        };
+        const READ_SIZES = [13, 14, 15, 16, 17, 18, 20, 22, 24];
+        function readGet(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
+        function readSet(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+        function applyReadSettings() {
+            const font = READ_FONTS[readGet('fileview-read-font', 'sans')] ? readGet('fileview-read-font', 'sans') : 'sans';
+            const size = READ_SIZES.includes(parseInt(readGet('fileview-read-size', '16'), 10))
+                ? parseInt(readGet('fileview-read-size', '16'), 10) : 16;
+            const full = readGet('fileview-full-width', '0') === '1';
+            const root = document.documentElement;
+            root.style.setProperty('--read-font', READ_FONTS[font]);
+            root.style.setProperty('--read-size', size + 'px');
+            root.classList.toggle('full-width', full);
+            document.querySelectorAll('#rpFonts .btn').forEach(b => b.classList.toggle('active', b.dataset.font === font));
+            document.getElementById('rpSize').textContent = size + ' px';
+            const wb = document.getElementById('widthBtn');
+            wb.classList.toggle('active', full); wb.setAttribute('aria-pressed', String(full));
+        }
+        function setReadFont(f) { readSet('fileview-read-font', f); applyReadSettings(); }
+        function stepReadSize(d) {
+            let i = READ_SIZES.indexOf(parseInt(readGet('fileview-read-size', '16'), 10));
+            if (i < 0) i = READ_SIZES.indexOf(16);
+            i = Math.max(0, Math.min(READ_SIZES.length - 1, i + d));
+            readSet('fileview-read-size', String(READ_SIZES[i])); applyReadSettings();
+        }
+        function resetReadSettings() { readSet('fileview-read-font', null); readSet('fileview-read-size', null); applyReadSettings(); }
+        function toggleFullWidth() {
+            readSet('fileview-full-width', document.documentElement.classList.contains('full-width') ? '0' : '1');
+            applyReadSettings();
+        }
+        function toggleReadPanel(force) {
+            const p = document.getElementById('readPanel');
+            const open = typeof force === 'boolean' ? force : !p.classList.contains('open');
+            p.classList.toggle('open', open);
+            document.getElementById('readBtn').setAttribute('aria-expanded', String(open));
+        }
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('readPanel').classList.contains('open')) return;
+            if (e.target.closest('#readPanel, #readBtn')) return;
+            toggleReadPanel(false);
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleReadPanel(false); });
+        applyReadSettings();
+
+        // After opening a file: fold the browser away (all screens);
+        // on phones also start at the top and show the end of the path
+        function afterFileOpen() {
+            setBrowserOpen(false);
             if (!MOBILE_MQ.matches) return;
-            toggleMobileSidebar(false);
             window.scrollTo(0, 0);
             // Show the END of the path (the file name), not the always-same start
             const pi = document.getElementById('pathInput');
