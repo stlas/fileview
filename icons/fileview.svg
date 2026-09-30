@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FileView">
+  <!-- Tile: FileView dark surface, faint edge so it holds on dark tab bars too -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#161b22"/>
+  <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="13.25" fill="none" stroke="#f0f6fc" stroke-opacity=".14" stroke-width="1.5"/>
+  <!-- Document with folded corner -->
+  <path d="M20 11H38L48 21V49A4 4 0 0 1 44 53H20A4 4 0 0 1 16 49V15A4 4 0 0 1 20 11Z" fill="#f0f6fc"/>
+  <path d="M38 11V17A4 4 0 0 0 42 21H48Z" fill="#8b949e"/>
+  <!-- Rendered content: a blue heading, two text lines -->
+  <rect x="21" y="25" width="18" height="4.5" rx="2.25" fill="#58a6ff"/>
+  <rect x="21" y="33" width="21" height="3" rx="1.5" fill="#8b949e"/>
+  <rect x="21" y="39" width="12" height="3" rx="1.5" fill="#8b949e"/>
+  <!-- View: a lens over the corner, cut out from the page by the tile colour -->
+  <circle cx="45" cy="46" r="10.5" fill="#161b22"/>
+  <circle cx="45" cy="46" r="8" fill="#58a6ff"/>
+  <circle cx="45" cy="46" r="3.4" fill="#0d1117"/>
+  <circle cx="46.6" cy="44.4" r="1.2" fill="#f0f6fc"/>
+</svg>
