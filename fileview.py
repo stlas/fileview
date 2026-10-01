@@ -321,8 +321,11 @@ def view_file():
             content = f.read()
 
         if file_ext == '.md':
+            # No 'codehilite': it emitted Pygments spans for which no CSS was
+            # ever shipped. Plain fenced_code yields <code class="language-x">,
+            # which the frontend highlights with highlight.js like code files.
             md = markdown.Markdown(extensions=[
-                'tables', 'fenced_code', 'codehilite', 'toc', 'meta', 'nl2br'
+                'tables', 'fenced_code', 'toc', 'meta', 'nl2br'
             ])
             html = md.convert(content)
             # Sanitize HTML to prevent XSS (defense-in-depth, frontend uses DOMPurify too)
