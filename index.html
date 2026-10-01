@@ -14,6 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer onload="highlightCode()"></script>
     <style>
         :root {
             --bg-primary: #0d1117;
@@ -174,7 +175,7 @@
         }
         .main-container.dual-panel .content { display: none; }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px), (max-height: 500px) and (hover: none) {
             .main-container { grid-template-columns: 1fr; }
             .sidebar { display: none; }
             .main-container.show-sidebar .sidebar { display: flex; }
@@ -357,6 +358,31 @@
         .markdown-body code { font-family: 'JetBrains Mono', monospace; background: var(--bg-code); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em; color: var(--accent-orange); }
         .markdown-body pre { background: var(--bg-code); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 0 0 1rem 0; }
         .markdown-body pre code { background: none; padding: 0; color: var(--text-primary); font-size: 0.875rem; }
+
+        /* Syntax colours for highlight.js. Own palette instead of a theme
+           stylesheet, so it follows dark/light like everything else. */
+        :root {
+            --syn-keyword: #ff7b72; --syn-string: #a5d6ff; --syn-comment: #8b949e;
+            --syn-number: #79c0ff; --syn-title: #d2a8ff; --syn-type: #ffa657;
+            --syn-tag: #7ee787; --syn-add: #aff5b4; --syn-del: #ffdcd7;
+        }
+        html.light {
+            --syn-keyword: #cf222e; --syn-string: #0a3069; --syn-comment: #6e7781;
+            --syn-number: #0550ae; --syn-title: #8250df; --syn-type: #953800;
+            --syn-tag: #116329; --syn-add: #116329; --syn-del: #82071e;
+        }
+        .hljs { background: none; color: var(--text-primary); }
+        .hljs-keyword, .hljs-selector-tag, .hljs-meta .hljs-keyword, .hljs-doctag { color: var(--syn-keyword); }
+        .hljs-string, .hljs-regexp, .hljs-meta .hljs-string, .hljs-selector-attr { color: var(--syn-string); }
+        .hljs-comment, .hljs-quote { color: var(--syn-comment); font-style: italic; }
+        .hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable, .hljs-attr, .hljs-attribute, .hljs-built_in, .hljs-symbol, .hljs-meta { color: var(--syn-number); }
+        .hljs-title, .hljs-title.function_, .hljs-section { color: var(--syn-title); }
+        .hljs-type, .hljs-title.class_, .hljs-params, .hljs-selector-class, .hljs-selector-id { color: var(--syn-type); }
+        .hljs-name, .hljs-tag, .hljs-selector-pseudo, .hljs-bullet { color: var(--syn-tag); }
+        .hljs-addition { color: var(--syn-add); }
+        .hljs-deletion { color: var(--syn-del); }
+        .hljs-emphasis { font-style: italic; }
+        .hljs-strong { font-weight: 600; }
         .markdown-body blockquote { border-left: 4px solid var(--accent-blue); padding: 0.5rem 1rem; margin: 0 0 1rem 0; background: rgba(88, 166, 255, 0.1); border-radius: 0 8px 8px 0; color: var(--text-secondary); }
         .markdown-body table { width: 100%; border-collapse: collapse; margin: 0 0 1rem 0; }
         .markdown-body th, .markdown-body td { padding: 0.75rem 1rem; border: 1px solid var(--border-color); text-align: left; }
@@ -787,7 +813,7 @@
            This block comes last so it wins. Desktop layout is unchanged. */
         .mobile-browser-toggle, .more-btn { display: none; }
 
-        @media (max-width: 900px) {
+        @media (max-width: 900px), (max-height: 500px) and (hover: none) {
             .header { padding: 0.5rem 0.75rem; }
             .header-content { flex-wrap: nowrap; gap: 0.5rem; position: relative; }
             #appTitle { display: none; }
@@ -881,7 +907,7 @@
 
         /* Wide tables and code may leave the reading column (desktop only),
            centered on it, never wider than the content area. */
-        @media (min-width: 901px) {
+        @media (min-width: 901px) and (min-height: 501px), (min-width: 901px) and (hover: hover) {
             :root:not(.full-width) .markdown-body table,
             :root:not(.full-width) .markdown-body pre {
                 display: block;
@@ -901,7 +927,7 @@
             .main-container.sidebar-closed:not(.dual-panel) #sidebar { display: none; }
             .sidebar-toggle.is-open { color: var(--accent-blue); border-color: var(--accent-blue); }
         }
-        @media (max-width: 900px) {
+        @media (max-width: 900px), (max-height: 500px) and (hover: none) {
             .sidebar-toggle { display: none; }   /* phones use the folders bar */
             #widthBtn { display: none; }         /* phones are always full width */
             /* keep the smaller phone headings, now relative to the chosen size */
@@ -931,7 +957,7 @@
         .read-panel .rp-row .btn.active { background: var(--bg-tertiary); }
         .read-panel .rp-size { flex: 1; text-align: center; align-self: center; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
         .read-panel .rp-reset { width: 100%; justify-content: center; }
-        @media (max-width: 900px) {
+        @media (max-width: 900px), (max-height: 500px) and (hover: none) {
             .read-panel { right: 0.5rem; left: 0.5rem; width: auto; }
         }
     </style>
@@ -1532,6 +1558,8 @@
                     <div class="markdown-body">${typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(data.html) : data.html}</div>
                 `;
 
+                highlightCode(content);
+
                 rawBtn.href = `${API_BASE}/raw?file=${encodeURIComponent(filepath)}`;
                 rawBtn.style.display = 'flex';
                 document.title = `${data.filename} - ${APP_CONFIG.title || 'FileView'}`;
@@ -1640,7 +1668,27 @@
 
         // ── Mobile: folders & favorites collapsed by default, "⋯" menu ──
         // State is NOT remembered on purpose: collapsed after every load.
-        const MOBILE_MQ = window.matchMedia('(max-width: 900px)');
+        // ── Syntax highlighting ──
+        // highlight.js loads deferred; whichever comes last (script or file)
+        // triggers the pass. Very large blocks stay plain: highlighting them
+        // can freeze a phone for seconds, and plain text is still readable.
+        const HIGHLIGHT_MAX_CHARS = 200000;
+        function highlightCode(root) {
+            if (typeof hljs === 'undefined') return;
+            const scope = root || document.getElementById('content');
+            if (!scope) return;
+            scope.querySelectorAll('pre code:not(.hljs)').forEach((block) => {
+                if (block.textContent.length > HIGHLIGHT_MAX_CHARS) return;
+                if (block.className.includes('language-text')) return;
+                hljs.highlightElement(block);
+            });
+        }
+
+        // Width alone misses phones held sideways (Pixel 8 Pro landscape is
+        // ~915px wide), so a low touch screen counts as mobile too. Keep in
+        // sync with the @media rules above, which repeat this condition.
+        const MOBILE_QUERY = '(max-width: 900px), (max-height: 500px) and (hover: none)';
+        const MOBILE_MQ = window.matchMedia(MOBILE_QUERY);
 
         function toggleMobileSidebar(force) {
             const mc = document.getElementById('mainContainer');
